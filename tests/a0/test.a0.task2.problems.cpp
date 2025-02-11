@@ -11,19 +11,18 @@
 //       compilation errors go away, and move onto the next problem.
 // Hint: there are 3 parts that need to be fixed.
 
-/*
+
 Test test_a0_task2_problems_print("a0.task2.problems.print", []() {
-    string str = "str";
+    std::string str = "str";
     int integer = 0;
     float flt = 0.1f;
 
 	// Most common ways of printing a line of text in Scotty3D are:
-    printf("\n1. printf with format specifiers such as string %s, interger %d, and float %f.\n", str.c_str(), integer, flt)
+    printf("\n1. printf with format specifiers such as string %s, interger %d, and float %f.\n", str.c_str(), integer, flt);
     
-    std::cour << "2. std::cout and std::endl with multiple insertion operators like " 
+    std::cout << "2. std::cout and std::endl with multiple insertion operators like " 
               << str + ", " << integer << ", and " << flt << "." << std::endl;
 });
-*/
 
 // A0T2: Problem 2
 // TODO: We want to pass our target 2D vector through a filter called helper, 
@@ -41,7 +40,7 @@ Test test_a0_task2_problems_numerical("a0.task2.problems.numerical", []() {
     // Ex) let x = 1, y = 4. y / 3 = 4 / 3 = 1.333 > 1, so x < y / 3. Return true.
 
     int factor = 3;
-    auto helper = [&](int x, int y) { return x < (y / factor); };
+    auto helper = [&](float x, float y) { return x < (y / factor); };
 
     int j = 0;
     for (auto& v : target) {
@@ -53,7 +52,6 @@ Test test_a0_task2_problems_numerical("a0.task2.problems.numerical", []() {
     }
 
     std::vector<std::vector<int>> expected = {{1, 2, 0}, {4, 5, 0}, {0, 8, 9}};
-
     if (Test::differs(target[0], expected[0]) || Test::differs(target[1], expected[1]) || Test::differs(target[2], expected[2]))
         throw Test::error("The vector does not match the expected result.");
 });
@@ -72,7 +70,7 @@ Test test_a0_task2_problems_vector("a0.task2.problems.vector", []() {
     }
 
     // Use iterator to grab the last element of the vector
-    int last_element = *one_to_ten.end();
+    int last_element = *(one_to_ten.end()-1);
 
     // The last element is surely a 10... right?
     int expected = 10;
@@ -99,7 +97,10 @@ Test test_a0_task2_problems_boolean("a0.task2.problems.boolean", []() {
         for (size_t j = 0; j < vec2.size(); j++) {
             for (size_t k = 0; k < vec3.size(); k++) {
                 // Check if the numbers at indices i,j,k respectively are the same
-                if ((vec1.at(i) == vec2.at(j)) == vec3.at(k)) count++;
+                if (vec1.at(i) == vec2.at(j)  && vec2.at(j) == vec3.at(k)) {
+                    // std::cout << vec1.at(i) << "," << vec2.at(j) << "," << vec3.at(k) << std::endl;
+                    count++;
+                }
             }
         }
     }

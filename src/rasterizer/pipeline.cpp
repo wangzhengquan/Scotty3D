@@ -202,6 +202,7 @@ auto Pipeline<p, P, F>::lerp(ShadedVertex const& a, ShadedVertex const& b, float
 	return ret;
 }
 
+
 /*
  * clip_line - clip line to portion with -w <= x,y,z <= w, emit vertices of clipped line (if non-empty)
  *  	va, vb: endpoints of line
@@ -316,6 +317,15 @@ void Pipeline<p, P, flags>::clip_triangle(
 // -------------------------------------------------------------------------
 // rasterization functions
 
+template<PrimitiveType p, class P, uint32_t F>
+auto Pipeline<p, P, F>::lerp(ClippedVertex const& a, ClippedVertex const& b, float t) -> ClippedVertex {
+	ClippedVertex ret;
+	ret.fb_position = (b.fb_position - a.fb_position) * t + a.fb_position;
+	for (uint32_t i = 0; i < ret.attributes.size(); ++i) {
+		ret.attributes[i] = (b.attributes[i] - a.attributes[i]) * t + a.attributes[i];
+	}
+	return ret;
+}
 /*
  * rasterize_line:
  * calls emit_fragment( frag ) for every pixel "covered" by the line (va.fb_position.xy, vb.fb_position.xy).
@@ -360,15 +370,72 @@ void Pipeline<p, P, flags>::rasterize_line(
 	// TODO: Check out the block comment above this function for more information on how to fill in
 	// this function!
 	// The OpenGL specification section 3.5 may also come in handy.
+	Vec2 a = va.fb_position.xy();
+	Vec2 b = vb.fb_position.xy();
 
-	{ // As a placeholder, draw a point in the middle of the line:
-		//(remove this code once you have a real implementation)
-		Fragment mid;
-		mid.fb_position = (va.fb_position + vb.fb_position) / 2.0f;
-		mid.attributes = va.attributes;
-		mid.derivatives.fill(Vec2(0.0f, 0.0f));
-		emit_fragment(mid);
+	// Determine the direction of the line
+	Vec2 delta = b - a;
+	Vec2 abs_delta = delta.abs();
+
+	// Determine the major axis (x or y)
+	bool steep = abs_delta.y > abs_delta.x;
+	if (steep) {
+			std::swap(a.x, a.y);
+			std::swap(b.x, b.y);
+			std::swap(delta.x, delta.y);
+			std::swap(abs_delta.x, abs_delta.y);
 	}
+
+	// Ensure we are always going from left to right
+	if (a.x > b.x) {
+			std::swap(a, b);
+			delta = b - a;
+			abs_delta = delta.abs();
+	}
+
+	// Bresenham's line algorithm
+	int32_t y_step = delta.y > 0 ? 1 : -1;
+	int32_t error = 2 * abs_delta.y - abs_delta.x;
+	int32_t y = a.y;
+
+	for (int32_t x = a.x; x <= b.x; ++x) {
+			Vec2 frag_pos;
+			if (steep) {
+					frag_pos = Vec2(y + 0.5f, x + 0.5f);
+			} else {
+					frag_pos = Vec2(x + 0.5f, y + 0.5f);
+			}
+
+			// Linear interpolation for z
+			float t = (x - a.x) / (b.x - a.x);
+			float z = va.fb_position.z + t * (vb.fb_position.z - va.fb_position.z);
+
+			// Emit fragment
+			Fragment frag;
+			frag.fb_position = Vec3(frag_pos.x, frag_pos.y, z);
+			// frag.attributes = va.attributes ;
+			for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+				frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
+			}
+			frag.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(frag);
+
+			// Update error and y
+			if (error > 0) {
+					y += y_step;
+					error -= 2 * abs_delta.x;
+			}
+			error += 2 * abs_delta.y;
+	}
+
+	// { // As a placeholder, draw a point in the middle of the line:
+	// 	//(remove this code once you have a real implementation)
+	// 	Fragment mid;
+	// 	mid.fb_position = (va.fb_position + vb.fb_position) / 2.0f;
+	// 	mid.attributes = va.attributes;
+	// 	mid.derivatives.fill(Vec2(0.0f, 0.0f));
+	// 	emit_fragment(mid);
+	// }
 
 }
 

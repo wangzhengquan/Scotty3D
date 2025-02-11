@@ -107,10 +107,13 @@ struct Pipeline {
 	//(2) transforms these vertices via Program::shade_vertex to produce ShadedVertices:
 	using ShadedVertex = ::ShadedVertex<FA>;
 
+	using ClippedVertex = ::ClippedVertex<FA>;
+
 	// helper for clip functions:
 	//  returns (b - a) * t + a
 	static ShadedVertex lerp(ShadedVertex const& a, ShadedVertex const& b, float t);
 
+	static ClippedVertex lerp(ClippedVertex const& a, ClippedVertex const& b, float t);
 	//(3) assembles these vertices into primitives of type primitive_type
 	//(4) clips the primitives (possibly producing more/fewer output primitives)
 	//    uses one of these helpers, depending on the primitive type:

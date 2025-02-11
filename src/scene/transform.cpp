@@ -10,17 +10,27 @@ Mat4 Transform::parent_to_local() const {
 }
 
 Mat4 Transform::local_to_world() const {
-	// A1T1: local_to_world
-	//don't use Mat4::inverse() in your code.
+	 // Start with the local-to-parent transformation
+    Mat4 local_to_world_mat = local_to_parent();
 
-	return Mat4::I; //<-- wrong, but here so code will compile
+    // If there is a parent, multiply by the parent's local-to-world matrix
+    if (auto parent_ptr = parent.lock()) {
+        local_to_world_mat = parent_ptr->local_to_world() * local_to_world_mat;
+    }
+
+    return local_to_world_mat;
 }
 
 Mat4 Transform::world_to_local() const {
-	// A1T1: world_to_local
-	//don't use Mat4::inverse() in your code.
+	// Start with the parent-to-local transformation
+    Mat4 world_to_local_mat = parent_to_local();
 
-	return Mat4::I; //<-- wrong, but here so code will compile
+    // If there is a parent, multiply by the parent's world-to-local matrix
+    if (auto parent_ptr = parent.lock()) {
+        world_to_local_mat = world_to_local_mat * parent_ptr->world_to_local();
+    }
+
+    return world_to_local_mat;
 }
 
 bool operator!=(const Transform& a, const Transform& b) {
