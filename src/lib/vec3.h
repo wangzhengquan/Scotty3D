@@ -20,6 +20,12 @@ struct Vec3 {
 		y = _y;
 		z = _z;
 	}
+	explicit Vec3(Vec2 _xy,  float _z) {
+		x = _xy.x;
+		y = _xy.y;
+		z = _z;
+	}
+	
 	explicit Vec3(int32_t _x, int32_t _y, int32_t _z) {
 		x = static_cast<float>(_x);
 		y = static_cast<float>(_y);

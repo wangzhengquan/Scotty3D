@@ -21,6 +21,49 @@ namespace std {
 	};
 }
 
+struct Raster {
+public:
+	uint32_t out_of_raster = 0;
+	std::vector< std::string > pixels;
+	explicit Raster () {
+		pixels.emplace_back(".");
+	}
+	auto draw(Vec2 const &px, char c) {
+		int32_t x = int32_t(std::floor(px.x));
+		int32_t y = int32_t(std::floor(px.y));
+
+		if (x < 0 || y < 0 || x > 10 || y > 10) {
+			++out_of_raster;
+			return;
+		}
+
+		if (uint32_t(y) >= pixels.size()) {
+			pixels.resize(y+1, "");
+		}
+		if (uint32_t(x) >= pixels[y].size()) {
+			pixels[y].resize(x+1, '.');
+		}
+		pixels[y][x] = c;
+	};
+
+	auto toString() -> std::string {
+		std::string info ;
+		//square up the raster:
+		size_t width = 0;
+		for (auto const &row : pixels) {
+			width = std::max(width, row.size());
+		}
+		for (auto &row : pixels) {
+			row.resize(width, '.');
+		}
+
+		for (uint32_t y = static_cast<uint32_t>(pixels.size()) - 1; y < static_cast<uint32_t>(pixels.size()); --y) {
+			info +=  pixels[y] + "\n";
+		}
+		return info;
+	}
+};
+
 //check that line produces exactly the listed fragments:
 void check_line_covers(std::string const &desc, std::vector< Vec2 > const &line_strip, std::unordered_set< Vec2 > const &expected) {
 
@@ -38,71 +81,41 @@ void check_line_covers(std::string const &desc, std::vector< Vec2 > const &line_
 		});
 	}
 
-	std::vector< std::string > raster;
-
-	raster.emplace_back(".");
-
-	uint32_t out_of_raster = 0;
-
-	auto draw = [&raster,&out_of_raster](Vec2 const &px, char c) {
-		int32_t x = int32_t(std::floor(px.x));
-		int32_t y = int32_t(std::floor(px.y));
-
-		if (x < 0 || y < 0 || x > 10 || y > 10) {
-			++out_of_raster;
-			return;
-		}
-
-		if (uint32_t(y) >= raster.size()) {
-			raster.resize(y+1, "");
-		}
-		if (uint32_t(x) >= raster[y].size()) {
-			raster[y].resize(x+1, '.');
-		}
-		raster[y][x] = c;
-	};
-
 	uint32_t matched = 0;
 	uint32_t missed = 0;
 	uint32_t extra = 0;
-
+	Raster raster, diffRaster, expectRaster;
 	for (auto const &f : got) {
 		if ((f.x - std::floor(f.x) != 0.5f) || (f.y - std::floor(f.y) != 0.5f)) {
 			throw Test::error("Rasterizing '" + desc + "', got fragment at (" + std::to_string(f.x) + ", " + std::to_string(f.y) + "), which isn't at a pixel center.");
 		}
+		raster.draw(f, '#');
 		if (expected.count(f)) {
-			draw(f, '#');
+			diffRaster.draw(f, '#');
 			++matched;
 		} else {
-			draw(f, '!');
+			diffRaster.draw(f, '!');
 			++extra;
 		}
 	}
 	for (auto const &f : expected) {
+		expectRaster.draw(f, '#');
 		if (!got.count(f)) {
-			draw(f, '?');
+			diffRaster.draw(f, '?');
 			++missed;
 		}
 	}
 
 	if (extra > 0 || missed > 0) {
 		//failed!
-		std::string info = "Example '" + desc + "' missed " + std::to_string(missed) + " ('?'); had " + std::to_string(extra) + " extra ('!'); and matched " + std::to_string(matched) + " ('#') fragments:";
+		std::string info = "Example '" + desc + "' missed " + std::to_string(missed) + " ('?'); had " + std::to_string(extra) + " extra ('!'); and matched " + std::to_string(matched) + " ('#') fragments:\n";
+		info += diffRaster.toString();
 
-		//square up the raster:
-		size_t width = 0;
-		for (auto const &row : raster) {
-			width = std::max(width, row.size());
-		}
-		for (auto &row : raster) {
-			row.resize(width, '.');
-		}
-
-		for (uint32_t y = static_cast<uint32_t>(raster.size()) - 1; y < static_cast<uint32_t>(raster.size()); --y) {
-			info += "\n    " + raster[y];
-		}
-
-		if (out_of_raster) info += "\n    (" + std::to_string(out_of_raster) + " out-of-range fragments not plotted.)";
+		if (raster.out_of_raster) info += "(" + std::to_string(raster.out_of_raster) + " out-of-range fragments not plotted.)\n";
+		info += "expect: \n" ;
+		info +=  expectRaster.toString();
+		info += "got: \n" ;
+		info +=  raster.toString();
 
 		puts(""); //because "test..."
 		info("%s", info.c_str());
@@ -134,7 +147,6 @@ void check_line_covers(std::string const &desc, std::initializer_list< Vec2 > co
 //--------------------------------------------------
 //entering/exiting diamond at (1,1):
 // only lines that *exit* the diamond should produce a fragment.
-
 
 Test test_a1_task2_diamond_inside("a1.task2.diamond.inside", []() {
 	check_line_covers(
@@ -184,5 +196,153 @@ Test test_a1_task2_simple_vertical("a1.task2.simple.vertical", []() {
 		 "..."}
 	);
 });
+
+Test test_a1_task2_slash_up("a1.task2.slash_up", []() {
+	check_line_covers(
+		"line from (0.0, 0.5) to (5, 3)",
+		{ Vec2(0.0f, 0.5f), Vec2(5.0f, 3.0f) },
+		{".....",
+		 ".....",
+		 "...##",
+		 ".##..",
+		 "#...."}
+	);
+});
+
+Test test_a1_task2_slash_up2("a1.task2.slash_up2", []() {
+	check_line_covers(
+		"line from (0.0, 0.0) to (5, 3)",
+		{ Vec2(0.0f, 0.0f), Vec2(5.0f, 3.0f) },
+		{".....",
+		 ".....",
+		 "...##",
+		 "..#..",
+		 "##..."}
+	);
+});
+
+Test test_a1_task2_slash_up_steep_singlecolumn("a1.task2.slash.up.steep.singlecolumn", []() {
+	check_line_covers(
+		"line from (2.5f, 1.2f) to (2.8f, 4.5f)",
+		{ Vec2(2.5f, 1.2f), Vec2(2.8f, 4.5f) },
+		{".....",
+		 "..#..",
+		 "..#..",
+		 "..#..",
+		 "....."}
+	);
+});
+
+Test test_a1_task2_slash_down("a1.task2.slash.down", []() {
+	check_line_covers(
+		"line from (0.0, 5.0) to (5.0, 3.0)",
+		{ Vec2(0.0f, 5.0f), Vec2(5.0f, 3.0f) },
+		{"###..",
+		 "...##",
+		 ".....",
+		 ".....",
+		 "....."}
+	);
+});
+
+Test test_a1_task2_slash_down2("a1.task2.slash.down2", []() {
+	check_line_covers(
+		"line from (1.0f, 4.0f) to (5.0f, 2.0f)",
+		{ Vec2(1.0f, 4.0f), Vec2(5.0f, 2.0f) },
+		{".....",
+		 ".##..",
+		 "...##",
+		 ".....",
+		 "....."}
+	);
+});
+
+Test test_a1_task2_slash_down_steep("a1.task2.slash.down.steep", []() {
+	check_line_covers(
+		"line from (1.0f, 5.0f) to (4.0f, 0.0f)",
+		{ Vec2(1.0f, 5.0f), Vec2(4.0f, 0.0f) },
+		{".#...",
+		 ".#...",
+		 "..#..",
+		 "...#.",
+		 "...#."}
+	);
+});
+
+Test test_a1_task2_slash_down_steep2("a1.task2.slash.down.steep2", []() {
+	check_line_covers(
+		"line from (1.0f, 5.0f) to (4.0f, 0.0f)",
+		{ Vec2(1.0f, 5.0f), Vec2(4.0f, 0.0f) },
+		{".#...",
+		 ".#...",
+		 "..#..",
+		 "...#.",
+		 "...#."}
+	);
+});
+
+
+Test test_a1_task2_slash_down_steep_singlecolumn("a1.task2.slash.down.steep.singlecolumn", []() {
+	check_line_covers(
+		"line from (4.5f, 3.8f) to (4.8f, 0.5f)",
+		{ Vec2(4.5f, 3.8f), Vec2(4.8f, 0.5f) },
+		{".....",
+		 "....#",
+		 "....#",
+		 "....#",
+		 "....#"}
+	);
+});
+
+Test test_a1_task2_diagonal1("a1.task2.diagonal1", []() {
+	check_line_covers(
+		"line from (0.0, 0.0) to (4.0, 4.0)",
+		{ Vec2(0.0f, 0.0f), Vec2(4.0f, 4.0f) },
+		{".....",
+		 "...#.",
+		 "..#..",
+		 ".#...",
+		 "#...."}
+	);
+});
+
+Test test_a1_task2_diagona2("a1.task2.diagonal2", []() {
+	check_line_covers(
+		"line from (0.25, 0.25) to (4.0, 4.0)",
+		{ Vec2(0.25f, 0.25f), Vec2(4.0f, 4.0f) },
+		{".....",
+		 "...#.",
+		 "..#..",
+		 ".#...",
+		 "#...."}
+	);
+});
+
+Test test_a1_task2_diagona3("a1.task2.diagonal3", []() {
+	check_line_covers(
+		"line from (0.75, 0.75) to (4.0, 4.0)",
+		{ Vec2(0.75f, 0.75f), Vec2(4.0f, 4.0f) },
+		{".....",
+		 "...#.",
+		 "..#..",
+		 ".#...",
+		 "#...."}
+	);
+});
+
+Test test_a1_task2_me_diagonal3("a1.task2.me.diagonal3", []() {
+	check_line_covers(
+		"line from (0.0, 0.75) to (4.25, 5.0)",
+		{ Vec2(0.0f, 0.75f), Vec2(4.25f, 5.0f) },
+		{"...#.",
+		 "..#..",
+		 ".#...",
+		 "#....",
+		 "....."}
+	);
+});
+
+
+
 
 
