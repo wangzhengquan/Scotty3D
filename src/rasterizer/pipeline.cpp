@@ -537,20 +537,17 @@ void Pipeline<p, P, flags>::rasterize_line3(
 		b.y *= y_flip;
 		 
 		// float t1 = std::floor(a.x), t2 = std::floor(b.x);
-		float x = std::floor(a.x) + 0.5, y, w;
-		 
+		float m =  (b.y - a.y) / (b.x - a.x);
+		float x = std::floor(a.x) + 0.5, y = (x - a.x) * m + a.y;
+
 		while (x < b.x) {
-			w = (x - a.x) / (b.x - a.x);
-			y = w * (b.y - a.y) + a.y;
-			y = std::floor(y) + 0.5;
-			// std::cout << "====== "<< x << "," << y << std::endl;
 			// Linear interpolation for z
 			float t = (x - a.x) / (b.x - a.x);
 			float z = va.fb_position.z + t * (vb.fb_position.z - va.fb_position.z);
 
 			// Emit fragment
 			Fragment frag;
-			frag.fb_position = steep ? Vec3(y * y_flip, x, z) : Vec3(x, y * y_flip , z);
+			frag.fb_position = steep ? Vec3((std::floor(y) + 0.5) * y_flip, x, z) : Vec3(x, (std::floor(y) + 0.5) * y_flip , z);
 			frag.attributes = va.attributes ;
 			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
@@ -559,6 +556,7 @@ void Pipeline<p, P, flags>::rasterize_line3(
 			emit_fragment(frag);
 
 			x++;
+			y += m;
 		}
 }
 
