@@ -449,9 +449,15 @@ auto Pipeline<p, P, F>::lerp(ClippedVertex const& a, ClippedVertex const& b, flo
 // 	// }
 
 // }
-
 template<PrimitiveType p, class P, uint32_t flags>
 void Pipeline<p, P, flags>::rasterize_line(
+    ClippedVertex const& va, ClippedVertex const& vb,
+    std::function<void(Fragment const&)> const& emit_fragment) {
+		return rasterize_line1(va, vb, emit_fragment);
+}
+
+template<PrimitiveType p, class P, uint32_t flags>
+void Pipeline<p, P, flags>::rasterize_line1(
     ClippedVertex const& va, ClippedVertex const& vb,
     std::function<void(Fragment const&)> const& emit_fragment) {
     if constexpr ((flags & PipelineMask_Interp) != Pipeline_Interp_Flat) {
@@ -481,22 +487,19 @@ void Pipeline<p, P, flags>::rasterize_line(
         delta = b - a;
     }
 
+		int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
+		 
 		auto f_xy = [&](float x, float y) -> float {
-			return (a.y - b.y) * x + (b.x - a.x) * y + a.x * b.y - b.x * a.y;
+			return (a.y - b.y) * x + (b.x - a.x) * y  + a.x * b.y - b.x * a.y;
 		};
-    // Bresenham's line algorithm
-    int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
     
 		float x = std::floor(a.x) + 0.5f;
 		float y = std::floor(a.y) + 0.5f;
 		float d = f_xy(x, y + y_step * 0.5);
-
-		 
 		while (x < b.x) {
-			
 			if (d * y_step < 0) {
 				y += y_step;
-				d += (a.y - b.y) + y_step * (b.x-a.x) ;
+				d += (a.y - b.y) + y_step * (b.x - a.x) ;
 			} else {
 				d += (a.y - b.y);
 			}
@@ -508,6 +511,76 @@ void Pipeline<p, P, flags>::rasterize_line(
 			// Emit fragment
 			Fragment frag;
 			frag.fb_position = steep ? Vec3(y, x, z) : Vec3(x, y, z);
+			frag.attributes = va.attributes ;
+			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
+			// }
+			frag.derivatives.fill(Vec2(0.0f, 0.0f));
+			emit_fragment(frag);
+
+			x++;
+			
+		}
+}
+
+template<PrimitiveType p, class P, uint32_t flags>
+void Pipeline<p, P, flags>::rasterize_line2(
+    ClippedVertex const& va, ClippedVertex const& vb,
+    std::function<void(Fragment const&)> const& emit_fragment) {
+    if constexpr ((flags & PipelineMask_Interp) != Pipeline_Interp_Flat) {
+        assert(0 && "rasterize_line should only be invoked in flat interpolation mode.");
+    }
+
+    // Extract positions
+    Vec2 a = va.fb_position.xy();
+    Vec2 b = vb.fb_position.xy();
+
+    // Determine the direction of the line
+    Vec2 delta = b - a;
+    Vec2 abs_delta = delta.abs();
+
+    // Determine the major axis (x or y)
+    bool steep = abs_delta.y > abs_delta.x;
+    if (steep) {
+        std::swap(a.x, a.y);
+        std::swap(b.x, b.y);
+        std::swap(delta.x, delta.y);
+        std::swap(abs_delta.x, abs_delta.y);
+    }
+
+    // // Ensure we are always going from left to right
+    if (a.x > b.x) {
+        std::swap(a, b);
+        delta = b - a;
+    }
+
+		// int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
+		int32_t y_flip = delta.y < 0 ? -1 : 1;
+		a.y *= y_flip;
+		b.y *= y_flip;
+		auto f_xy = [&](float x, float y) -> float {
+			return (a.y - b.y) * x + (b.x - a.x) * y  + a.x * b.y - b.x * a.y;
+		};
+    
+		float x = std::floor(a.x) + 0.5f;
+		float y = std::floor(a.y) + 0.5f;
+		float d = f_xy(x, y + 0.5);
+		 
+		while (x < b.x) {
+			if (d  < 0) {
+				y += 1;
+				d += (a.y - b.y) + (b.x - a.x);
+			} else {
+				d += (a.y - b.y);
+			}
+			// std::cout << "====== "<< x << "," << y << std::endl;
+			// Linear interpolation for z
+			float t = (x - a.x) / (b.x - a.x);
+			float z = va.fb_position.z + t * (vb.fb_position.z - va.fb_position.z);
+
+			// Emit fragment
+			Fragment frag;
+			frag.fb_position = steep ? Vec3(y * y_flip, x, z) : Vec3(x, y * y_flip, z);
 			frag.attributes = va.attributes ;
 			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];

@@ -154,4 +154,13 @@ struct Pipeline {
 	//  	framebuffer (must not be null): framebuffer to write results into
 	static void run(std::vector<Vertex> const& vertices,
 	                typename Program::Parameters const& parameters, Framebuffer* framebuffer);
+private:
+	static void rasterize_line1(
+		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
+		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the line
+	);
+	static void rasterize_line2(
+		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
+		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the line
+	);
 };
