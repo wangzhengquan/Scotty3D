@@ -163,4 +163,8 @@ private:
 		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
 		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the line
 	);
+	static void rasterize_line3(
+		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
+		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the line
+	);
 };

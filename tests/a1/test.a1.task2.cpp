@@ -197,7 +197,7 @@ Test test_a1_task2_simple_vertical("a1.task2.simple.vertical", []() {
 	);
 });
 
-Test test_a1_task2_slash_up("a1.task2.slash_up", []() {
+Test test_a1_task2_slash_up("a1.task2.slash.up", []() {
 	check_line_covers(
 		"line from (0.0, 0.5) to (5, 3)",
 		{ Vec2(0.0f, 0.5f), Vec2(5.0f, 3.0f) },
@@ -209,7 +209,7 @@ Test test_a1_task2_slash_up("a1.task2.slash_up", []() {
 	);
 });
 
-Test test_a1_task2_slash_up2("a1.task2.slash_up2", []() {
+Test test_a1_task2_slash_up2("a1.task2.slash.up2", []() {
 	check_line_covers(
 		"line from (0.0, 0.0) to (5, 3)",
 		{ Vec2(0.0f, 0.0f), Vec2(5.0f, 3.0f) },
@@ -218,6 +218,42 @@ Test test_a1_task2_slash_up2("a1.task2.slash_up2", []() {
 		 "...##",
 		 "..#..",
 		 "##..."}
+	);
+});
+
+Test test_a1_task2_slash_up3("a1.task2.slash.up3", []() {
+	check_line_covers(
+		"line from (0.0, 0.0) to (5, 2)",
+		{ Vec2(0.0f, 0.0f), Vec2(5.0f, 2.0f) },
+		{".....",
+		 ".....",
+		 ".....",
+		 "..###",
+		 "##..."}
+	);
+});
+
+Test test_a1_task2_slash_up4("a1.task2.slash.up4", []() {
+	check_line_covers(
+		"line from (1.0f, 1.25f) to (4.75f, 3.0f)",
+		{ Vec2(1.0f, 1.25f), Vec2(4.75f, 3.0f) },
+		{".....",
+		 ".....",
+		 "...##",
+		 ".##..",
+		 "....."}
+	);
+});
+
+Test test_a1_task2_slash_up5("a1.task2.slash.up5", []() {
+	check_line_covers(
+		"line from (0.25f, 0.75f) to (4.4f, 3.9f)",
+		{ Vec2(0.25f, 0.75f), Vec2(4.4f, 3.9f) },
+		{".....",
+		 "...#.",
+		 "..#..",
+		 ".#...",
+		 "#...."}
 	);
 });
 
@@ -237,8 +273,8 @@ Test test_a1_task2_slash_down("a1.task2.slash.down", []() {
 	check_line_covers(
 		"line from (0.0, 5.0) to (5.0, 3.0)",
 		{ Vec2(0.0f, 5.0f), Vec2(5.0f, 3.0f) },
-		{"###..",
-		 "...##",
+		{"##...",
+		 "..###",
 		 ".....",
 		 ".....",
 		 "....."}
@@ -334,6 +370,18 @@ Test test_a1_task2_me_diagonal3("a1.task2.me.diagonal3", []() {
 	check_line_covers(
 		"line from (0.0, 0.75) to (4.25, 5.0)",
 		{ Vec2(0.0f, 0.75f), Vec2(4.25f, 5.0f) },
+		{"...#.",
+		 "..#..",
+		 ".#...",
+		 "#....",
+		 "....."}
+	);
+});
+
+Test test_a1_task2_me_diagonal4("a1.task2.me.diagonal4", []() {
+	check_line_covers(
+		"line from (0.0, 0.5) to (4.5, 5.0)",
+		{ Vec2(0.0f, 0.5f), Vec2(4.5f, 5.0f) },
 		{"...#.",
 		 "..#..",
 		 ".#...",
