@@ -382,8 +382,8 @@ void Pipeline<p, P, flags>::rasterize_line1(
     Vec2 abs_delta = delta.abs();
 
     // Determine the major axis (x or y)
-    bool steep = abs_delta.y > abs_delta.x;
-    if (steep) {
+    bool flip_by_xy = abs_delta.y > abs_delta.x;
+    if (flip_by_xy) {
         std::swap(a.x, a.y);
         std::swap(b.x, b.y);
         std::swap(delta.x, delta.y);
@@ -419,7 +419,7 @@ void Pipeline<p, P, flags>::rasterize_line1(
 
 			// Emit fragment
 			Fragment frag;
-			frag.fb_position = steep ? Vec3(y, x, z) : Vec3(x, y, z);
+			frag.fb_position = flip_by_xy ? Vec3(y, x, z) : Vec3(x, y, z);
 			frag.attributes = va.attributes ;
 			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
@@ -448,8 +448,8 @@ void Pipeline<p, P, flags>::rasterize_line2(
     Vec2 abs_delta = delta.abs();
 
     // Determine the major axis (x or y)
-    bool steep = abs_delta.y > abs_delta.x;
-    if (steep) {
+    bool flip_by_xy = abs_delta.y > abs_delta.x;
+    if (flip_by_xy) {
         std::swap(a.x, a.y);
         std::swap(b.x, b.y);
         std::swap(delta.x, delta.y);
@@ -463,9 +463,9 @@ void Pipeline<p, P, flags>::rasterize_line2(
     }
 
 		// int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
-		int32_t y_flip = delta.y < 0 ? -1 : 1;
-		a.y *= y_flip;
-		b.y *= y_flip;
+		int32_t flip_by_y = delta.y < 0 ? -1 : 1;
+		a.y *= flip_by_y;
+		b.y *= flip_by_y;
 		auto f_xy = [&](float x, float y) -> float {
 			return (a.y - b.y) * x + (b.x - a.x) * y  + a.x * b.y - b.x * a.y;
 		};
@@ -488,7 +488,7 @@ void Pipeline<p, P, flags>::rasterize_line2(
 
 			// Emit fragment
 			Fragment frag;
-			frag.fb_position = steep ? Vec3(y * y_flip, x, z) : Vec3(x, y * y_flip, z);
+			frag.fb_position = flip_by_xy ? Vec3(y * flip_by_y, x, z) : Vec3(x, y * flip_by_y, z);
 			frag.attributes = va.attributes ;
 			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
@@ -517,8 +517,8 @@ void Pipeline<p, P, flags>::rasterize_line3(
     Vec2 abs_delta = delta.abs();
 
     // Determine the major axis (x or y)
-    bool steep = abs_delta.y > abs_delta.x;
-    if (steep) {
+    bool flip_by_xy = abs_delta.y > abs_delta.x;
+    if (flip_by_xy) {
         std::swap(a.x, a.y);
         std::swap(b.x, b.y);
         std::swap(delta.x, delta.y);
@@ -532,9 +532,9 @@ void Pipeline<p, P, flags>::rasterize_line3(
     }
 
 		// int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
-		int32_t y_flip = delta.y < 0 ? -1 : 1;
-		a.y *= y_flip;
-		b.y *= y_flip;
+		int32_t flip_by_y = delta.y < 0 ? -1 : 1;
+		a.y *= flip_by_y;
+		b.y *= flip_by_y;
 		 
 		// float t1 = std::floor(a.x), t2 = std::floor(b.x);
 		float m =  (b.y - a.y) / (b.x - a.x);
@@ -547,7 +547,7 @@ void Pipeline<p, P, flags>::rasterize_line3(
 
 			// Emit fragment
 			Fragment frag;
-			frag.fb_position = steep ? Vec3((std::floor(y) + 0.5) * y_flip, x, z) : Vec3(x, (std::floor(y) + 0.5) * y_flip , z);
+			frag.fb_position = flip_by_xy ? Vec3((std::floor(y) + 0.5) * flip_by_y, x, z) : Vec3(x, (std::floor(y) + 0.5) * flip_by_y , z);
 			frag.attributes = va.attributes ;
 			// for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 			// 	frag.attributes[i] = (vb.attributes[i] - va.attributes[i]) * t + va.attributes[i];
