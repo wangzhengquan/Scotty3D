@@ -7,6 +7,19 @@
 #include "../lib/mathlib.h"
 #include "framebuffer.h"
 #include "sample_pattern.h"
+
+/**
+ * compute the distance of p to the line  determined by two points v0 and v1。
+ */
+inline static float dist_of_p_to_l (Vec2 const& v0, Vec2 const& v1, Vec2 const& p)  {
+		return (v0.y -  v1.y) * p.x + ( v1.x - v0.x) * p.y  + v0.x *  v1.y -  v1.x * v0.y;
+};
+
+inline static float triangle_area(Vec2 const& v0, Vec2 const& v1, Vec2 const& v2) {
+		return (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+};
+
+
 template<PrimitiveType primitive_type, class Program, uint32_t flags>
 void Pipeline<primitive_type, Program, flags>::run(std::vector<Vertex> const& vertices,
                                                    typename Program::Parameters const& parameters,
@@ -362,7 +375,7 @@ template<PrimitiveType p, class P, uint32_t flags>
 void Pipeline<p, P, flags>::rasterize_line(
     ClippedVertex const& va, ClippedVertex const& vb,
     std::function<void(Fragment const&)> const& emit_fragment) {
-		return rasterize_line3(va, vb, emit_fragment);
+		return rasterize_line1(va, vb, emit_fragment);
 }
 
 template<PrimitiveType p, class P, uint32_t flags>
@@ -531,12 +544,12 @@ void Pipeline<p, P, flags>::rasterize_line3(
         delta = b - a;
     }
 
-		// int32_t y_step =  delta.y == 0 ? 0 : delta.y > 0 ? 1 : -1;
 		int32_t flip_by_x = delta.y < 0 ? -1 : 1;
 		a.y *= flip_by_x;
 		b.y *= flip_by_x;
 		 
-		// float t1 = std::floor(a.x), t2 = std::floor(b.x);
+		// std::cout << "======" << delta << std::endl;
+		// std::cout << "=====" << (b.x - a.x) << "," << (b.y - a.y) << std::endl;
 		float m =  (b.y - a.y) / (b.x - a.x);
 		float x = std::floor(a.x) + 0.5, y = (x - a.x) * m + a.y;
 
@@ -598,7 +611,7 @@ void Pipeline<p, P, flags>::rasterize_line3(
  *
  */
 template<PrimitiveType p, class P, uint32_t flags>
-void Pipeline<p, P, flags>::rasterize_triangle(
+void Pipeline<p, P, flags>::rasterize_triangle1(
 	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
 	std::function<void(Fragment const&)> const& emit_fragment) {
 	// NOTE: it is okay to restructure this function to allow these tasks to use the
@@ -608,6 +621,7 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 	if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
 		// A1T3: flat triangles
 		// TODO: rasterize triangle (see block comment above this function).
+		
 
 		// As a placeholder, here's code that draws some lines:
 		//(remove this and replace it with a real solution)
@@ -631,6 +645,74 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 	}
 }
 
+template<PrimitiveType p, class P, uint32_t flags>
+void Pipeline<p, P, flags>::rasterize_triangle(
+	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
+	std::function<void(Fragment const&)> const& emit_fragment) {
+	// Extract positions
+	Vec2 a = va.fb_position.xy();
+	Vec2 b = vb.fb_position.xy();
+	Vec2 c = vc.fb_position.xy();
+
+	// Bounding box of the triangle
+	float min_x = std::min({a.x, b.x, c.x});
+	float max_x = std::max({a.x, b.x, c.x});
+	float min_y = std::min({a.y, b.y, c.y});
+	float max_y = std::max({a.y, b.y, c.y});
+
+	// Area functions
+	// float area = triangle_area(a, b, c);
+	float fa = dist_of_p_to_l(b, c, a);
+	float fb = dist_of_p_to_l(c, a, b);
+	float fc = dist_of_p_to_l(a, b, c);
+ 
+	Vec2 off_screen_point(-1, -1);
+	bool sa = fa * dist_of_p_to_l(b, c, off_screen_point) > 0, 
+			 sb = fb * dist_of_p_to_l(c, a, off_screen_point) > 0, 
+			 sc = fc * dist_of_p_to_l(a, b, off_screen_point) > 0;
+
+	// Rasterize the triangle
+	for (float y = std::floor(min_y) + 0.5; y <= max_y; ++y) {
+		for (float x = std::floor(min_x) + 0.5; x <= max_x; ++x) {
+			Vec2 v(x , y);
+			float alpha = dist_of_p_to_l(b, c, v) / fa;
+			float beta = dist_of_p_to_l(c, a, v) / fb;
+			float gamma = dist_of_p_to_l(a, b, v) / fc;
+// std::cout << "=======" << alpha << "," << beta << "," << gamma << "," << triangle_area(a, b, c) << std::endl;
+			// if (alpha >= 0 && beta >= 0 && gamma >= 0) {
+			if ((alpha > 0 || (alpha ==0 && sa)) && (beta > 0 || (beta==0 && sb)) && (gamma > 0 || (gamma==0 && sc) )) {
+				// Interpolate depth
+				float z = alpha * va.fb_position.z + beta * vb.fb_position.z + gamma * vc.fb_position.z;
+				// Interpolate attributes based on interpolation mode
+				Fragment frag;
+				frag.fb_position = Vec3(v, z);
+// std::cout << "find=======" << frag.fb_position << std::endl;
+				if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
+						frag.attributes = va.attributes;
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
+						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+								frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+						}
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
+						float inv_w = 1.0f / (alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w);
+						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+								frag.attributes[i] = (alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) * inv_w;
+						}
+				}
+
+				// Compute derivatives (forward differences)
+				// for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+				// 		frag.derivatives[i] = Vec2(
+				// 				frag.attributes[i] - va.attributes[i],
+				// 				frag.attributes[i] - vb.attributes[i]
+				// 		);
+				// }
+
+				emit_fragment(frag);
+			}
+		}
+	}
+}
 //-------------------------------------------------------------------------
 // compile instantiations for all programs and blending and testing types:
 

@@ -167,4 +167,13 @@ private:
 		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
 		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the line
 	);
+
+	static void rasterize_triangle1(
+		ClippedVertex const &a, ClippedVertex const &b, ClippedVertex const &c, //triangle (a,b,c)
+		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the triangle
+	);
+	static void rasterize_triangle2(
+		ClippedVertex const &a, ClippedVertex const &b, ClippedVertex const &c, //triangle (a,b,c)
+		std::function< void(Fragment const &) > const &emit_fragment //call with every fragment covered by the triangle
+	);
 };
