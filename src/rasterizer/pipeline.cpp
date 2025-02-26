@@ -155,6 +155,9 @@ void Pipeline<primitive_type, Program, flags>::run(std::vector<Vertex> const& ve
 			// "Less" means the depth test passes when the new fragment has depth less than the stored depth.
 			// A1T4: Depth_Less
 			// TODO: implement depth test! We want to only emit fragments that have a depth less than the stored depth, hence "Depth_Less".
+			if (f.fb_position.z >= fb_depth){
+				continue;
+			}
 		} else {
 			static_assert((flags & PipelineMask_Depth) <= Pipeline_Depth_Always, "Unknown depth test flag.");
 		}
@@ -177,12 +180,12 @@ void Pipeline<primitive_type, Program, flags>::run(std::vector<Vertex> const& ve
 			} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Add) {
 				// A1T4: Blend_Add
 				// TODO: framebuffer color should have fragment color multiplied by fragment opacity added to it.
-				fb_color = sf.color; //<-- replace this line
+				fb_color += sf.color * sf.opacity;
 			} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Over) {
 				// A1T4: Blend_Over
 				// TODO: set framebuffer color to the result of "over" blending (also called "alpha blending") the fragment color over the framebuffer color, using the fragment's opacity
 				// 		 You may assume that the framebuffer color has its alpha premultiplied already, and you just want to compute the resulting composite color
-				fb_color = sf.color; //<-- replace this line
+				fb_color = sf.color * sf.opacity + fb_color * (1.0f - sf.opacity);
 			} else {
 				static_assert((flags & PipelineMask_Blend) <= Pipeline_Blend_Over, "Unknown blending flag.");
 			}
@@ -688,25 +691,56 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 				frag.fb_position = Vec3(v, z);
 // std::cout << "find=======" << frag.fb_position << std::endl;
 				if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
+					// A1T3: flat triangles
 						frag.attributes = va.attributes;
 				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
-						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
-								frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+					// A1T5: screen-space smooth triangles
+					// Interpolate attributes linearly using barycentric coordinates
+					for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+							frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+					}
+					
+					// Compute derivatives using forward differences
+					for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+						// Check if the attributes are constant across the triangle
+						bool is_constant = (va.attributes[i] == vb.attributes[i] && vb.attributes[i] == vc.attributes[i]);
+						if (is_constant) {
+							// If the attribute is constant, the derivative is zero
+							frag.derivatives[i] = Vec2(0.0f, 0.0f);
+						} else {
+							// Compute d/dx: difference between current fragment and next fragment in x direction
+							float dx = (alpha + 1.0f) * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
+							// Compute d/dy: difference between current fragment and next fragment in y direction
+							float dy = alpha * va.attributes[i] + (beta + 1.0f) * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
+							frag.derivatives[i] = Vec2(dx, dy);
 						}
+					}
+					
 				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
-						float inv_w = 1.0f / (alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w);
+						// A1T5: perspective-correct triangles
+						// Interpolate 1/w and attributes/w using barycentric coordinates
+						float inv_w = alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w;
 						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
-								frag.attributes[i] = (alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) * inv_w;
+								float attr_over_w = alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w;
+								frag.attributes[i] = attr_over_w / inv_w;
+						}
+					
+						// Compute derivatives using forward differences
+						for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+							// Check if the attributes are constant across the triangle
+							bool is_constant = (va.attributes[i] == vb.attributes[i] && vb.attributes[i] == vc.attributes[i]);
+							if (is_constant) {
+								// If the attribute is constant, the derivative is zero
+								frag.derivatives[i] = Vec2(0.0f, 0.0f);
+							} else {
+								// Compute d/dx: difference between current fragment and next fragment in x direction
+								float dx = ((alpha + 1.0f) * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
+								// Compute d/dy: difference between current fragment and next fragment in y direction
+								float dy = (alpha * va.attributes[i] * va.inv_w + (beta + 1.0f) * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
+								frag.derivatives[i] = Vec2(dx, dy);
+							}
 						}
 				}
-
-				// Compute derivatives (forward differences)
-				// for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
-				// 		frag.derivatives[i] = Vec2(
-				// 				frag.attributes[i] - va.attributes[i],
-				// 				frag.attributes[i] - vb.attributes[i]
-				// 		);
-				// }
 
 				emit_fragment(frag);
 			}
