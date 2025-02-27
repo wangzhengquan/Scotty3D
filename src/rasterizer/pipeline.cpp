@@ -614,42 +614,105 @@ void Pipeline<p, P, flags>::rasterize_line3(
  *
  */
 template<PrimitiveType p, class P, uint32_t flags>
-void Pipeline<p, P, flags>::rasterize_triangle1(
+void Pipeline<p, P, flags>::rasterize_triangle(
 	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
 	std::function<void(Fragment const&)> const& emit_fragment) {
-	// NOTE: it is okay to restructure this function to allow these tasks to use the
-	//  same code paths. Be aware, however, that all of them need to remain working!
-	//  (e.g., if you break Flat while implementing Correct, you won't get points
-	//   for Flat.)
-	if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
-		// A1T3: flat triangles
-		// TODO: rasterize triangle (see block comment above this function).
-		
-
-		// As a placeholder, here's code that draws some lines:
-		//(remove this and replace it with a real solution)
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(va, vb, emit_fragment);
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(vb, vc, emit_fragment);
-		Pipeline<PrimitiveType::Lines, P, flags>::rasterize_line(vc, va, emit_fragment);
-	} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
-		// A1T5: screen-space smooth triangles
-		// TODO: rasterize triangle (see block comment above this function).
-
-		// As a placeholder, here's code that calls the Flat interpolation version of the function:
-		//(remove this and replace it with a real solution)
-		Pipeline<PrimitiveType::Lines, P, (flags & ~PipelineMask_Interp) | Pipeline_Interp_Flat>::rasterize_triangle(va, vb, vc, emit_fragment);
-	} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
-		// A1T5: perspective correct triangles
-		// TODO: rasterize triangle (block comment above this function).
-
-		// As a placeholder, here's code that calls the Screen-space interpolation function:
-		//(remove this and replace it with a real solution)
-		Pipeline<PrimitiveType::Lines, P, (flags & ~PipelineMask_Interp) | Pipeline_Interp_Smooth>::rasterize_triangle(va, vb, vc, emit_fragment);
-	}
+		return rasterize_triangle1(va, vb, vc, emit_fragment);
 }
 
 template<PrimitiveType p, class P, uint32_t flags>
-void Pipeline<p, P, flags>::rasterize_triangle(
+void Pipeline<p, P, flags>::rasterize_triangle2(
+	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
+	std::function<void(Fragment const&)> const& emit_fragment) {
+	// Extract positions
+	Vec2 a = va.fb_position.xy();
+	Vec2 b = vb.fb_position.xy();
+	Vec2 c = vc.fb_position.xy();
+
+	// Bounding box of the triangle
+	float min_x = std::min({a.x, b.x, c.x});
+	float max_x = std::max({a.x, b.x, c.x});
+	float min_y = std::min({a.y, b.y, c.y});
+	float max_y = std::max({a.y, b.y, c.y});
+
+	// Area functions
+	// float area = triangle_area(a, b, c);
+	float fa = dist_of_p_to_l(b, c, a),
+	  		fb = dist_of_p_to_l(c, a, b),
+	  		fc = dist_of_p_to_l(a, b, c);
+ 
+	Vec2 off_screen_point(-1, -1);
+	bool sa = fa * dist_of_p_to_l(b, c, off_screen_point) > 0, 
+			 sb = fb * dist_of_p_to_l(c, a, off_screen_point) > 0, 
+			 sc = fc * dist_of_p_to_l(a, b, off_screen_point) > 0;
+  float xa = (b.y - c.y) / fa, xb = (c.y - a.y) / fb, xc = (a.y - b.y) / fc,
+				ya = (c.x - b.x) / fa, yb = (a.x - c.x) / fb, yc = (b.x - a.x) / fc;
+	// Rasterize the triangle
+	for (float y = std::floor(min_y) + 0.5; y <= max_y; ++y) {
+		float x = std::floor(min_x) + 0.5;
+		float alpha = dist_of_p_to_l(b, c, Vec2 (x , y)) / fa;
+		float beta = dist_of_p_to_l(c, a, Vec2 (x , y)) / fb;
+		float gamma = dist_of_p_to_l(a, b, Vec2 (x , y)) / fc;
+		for (; x <= max_x; ++x, alpha += xa, beta += xb, gamma += xc) {
+// std::cout << "=======" << alpha << "," << beta << "," << gamma << "," << triangle_area(a, b, c) << std::endl;
+			// if (alpha >= 0 && beta >= 0 && gamma >= 0) {
+			if ((alpha > 0 || (alpha ==0 && sa)) && (beta > 0 || (beta==0 && sb)) && (gamma > 0 || (gamma==0 && sc) )) {
+				// Interpolate depth
+				float z = alpha * va.fb_position.z + beta * vb.fb_position.z + gamma * vc.fb_position.z;
+				// Interpolate attributes based on interpolation mode
+				Fragment frag;
+				frag.fb_position = Vec3(x, y, z);
+// std::cout << "find=======" << frag.fb_position << std::endl;
+				if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
+					// A1T3: flat triangles
+						frag.attributes = va.attributes;
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
+					// A1T5: screen-space smooth triangles
+					// Interpolate attributes linearly using barycentric coordinates
+					for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+							frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+							// printf("attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
+					}
+					
+					// Compute derivatives using forward differences
+					for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+							// Compute d/dx: difference between current fragment and next fragment in x direction
+							float dx = (alpha + xa) * va.attributes[i] + (beta + xb) * vb.attributes[i] + (gamma + xc) * vc.attributes[i] - frag.attributes[i];
+							// Compute d/dy: difference between current fragment and next fragment in y direction 
+							float dy = (alpha + ya) * va.attributes[i] + (beta + yb) * vb.attributes[i] + (gamma + yc) * vc.attributes[i] - frag.attributes[i];
+							// printf("dx attributes[%d]: %f, %f, %f \n", i, (alpha + 1.0f) * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
+							// printf("dy attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], (beta + 1.0f) * vb.attributes[i], gamma * vc.attributes[i]);
+							frag.derivatives[i] = Vec2(dx, dy);
+							// std::cout << "derivatives[" << i << "]" << frag.derivatives[i] << std::endl;
+					}
+					
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
+						// A1T5: perspective-correct triangles
+						// Interpolate 1/w and attributes/w using barycentric coordinates
+						float inv_w = alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w;
+						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+								float attr_over_w = alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w;
+								frag.attributes[i] = attr_over_w / inv_w;
+						}
+						// Compute derivatives using forward differences
+						for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+								float dx = ((alpha + xa) * va.attributes[i] * va.inv_w + (beta + xb) * vb.attributes[i] * vb.inv_w + (gamma + xc) * vc.attributes[i] * vc.inv_w) / inv_w  - frag.attributes[i];
+								float dy = ((alpha + ya) * va.attributes[i] * va.inv_w + (beta + yb) * vb.attributes[i] * vb.inv_w + (gamma + yc) * vc.attributes[i] * vc.inv_w) / inv_w  - frag.attributes[i];
+								frag.derivatives[i] = Vec2(dx, dy);
+								// std::cout << "derivatives[" << i << "]" << frag.derivatives[i] << std::endl;
+						}
+						 
+				}
+
+				emit_fragment(frag);
+			}
+		}
+	}
+}
+
+
+template<PrimitiveType p, class P, uint32_t flags>
+void Pipeline<p, P, flags>::rasterize_triangle1(
 	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
 	std::function<void(Fragment const&)> const& emit_fragment) {
 	// Extract positions
@@ -698,6 +761,111 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 					// Interpolate attributes linearly using barycentric coordinates
 					for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
 							frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+							//std::cout << "attributes[]" << 
+							// printf("attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
+					}
+					
+					// Compute derivatives using forward differences
+					for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+						 
+							float alpha2 = dist_of_p_to_l(b, c, Vec2(x+1 , y)) / fa;
+							float beta2 = dist_of_p_to_l(c, a, Vec2(x+1 , y)) / fb;
+							float gamma2 = dist_of_p_to_l(a, b, Vec2(x+1 , y)) / fc;
+							float dx = alpha2 * va.attributes[i] + beta2 * vb.attributes[i] + gamma2 * vc.attributes[i] - frag.attributes[i];
+							// printf("dx2=%f\n", dx2);
+							alpha2 = dist_of_p_to_l(b, c, Vec2(x , y+1)) / fa;
+							beta2 = dist_of_p_to_l(c, a, Vec2(x , y+1)) / fb;
+							gamma2 = dist_of_p_to_l(a, b, Vec2(x , y+1)) / fc;
+							float dy = alpha2 * va.attributes[i] + beta2 * vb.attributes[i] + gamma2 * vc.attributes[i] - frag.attributes[i];
+							 
+							// printf("dy attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], (beta + 1.0f) * vb.attributes[i], gamma * vc.attributes[i]);
+							frag.derivatives[i] = Vec2(dx, dy);
+							// std::cout << "derivatives[" << i << "]" << frag.derivatives[i] << std::endl;
+						
+					}
+					
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
+						// A1T5: perspective-correct triangles
+						// Interpolate 1/w and attributes/w using barycentric coordinates
+						float inv_w = alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w;
+						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+								float attr_over_w = alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w;
+								frag.attributes[i] = attr_over_w / inv_w;
+						}
+						// Compute derivatives using forward differences
+						for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
+							float alpha2 = dist_of_p_to_l(b, c, Vec2(x+1 , y)) / fa;
+							float beta2 = dist_of_p_to_l(c, a, Vec2(x+1 , y)) / fb;
+							float gamma2 = dist_of_p_to_l(a, b, Vec2(x+1 , y)) / fc;
+							float dx = (alpha2 * va.attributes[i] * va.inv_w  + beta2 * vb.attributes[i] * vb.inv_w  + gamma2 * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
+							// printf("dx2=%f\n", dx2);
+							alpha2 = dist_of_p_to_l(b, c, Vec2(x , y+1)) / fa;
+							beta2 = dist_of_p_to_l(c, a, Vec2(x , y+1)) / fb;
+							gamma2 = dist_of_p_to_l(a, b, Vec2(x , y+1)) / fc;
+							float dy = (alpha2 * va.attributes[i] * va.inv_w  + beta2 * vb.attributes[i] * vb.inv_w  + gamma2 * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
+							frag.derivatives[i] = Vec2(dx, dy); 
+							 
+						}
+				}
+
+				emit_fragment(frag);
+			}
+		}
+	}
+}
+
+template<PrimitiveType p, class P, uint32_t flags>
+void Pipeline<p, P, flags>::rasterize_triangle3(
+	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
+	std::function<void(Fragment const&)> const& emit_fragment) {
+	// Extract positions
+	Vec2 a = va.fb_position.xy();
+	Vec2 b = vb.fb_position.xy();
+	Vec2 c = vc.fb_position.xy();
+
+	// Bounding box of the triangle
+	float min_x = std::min({a.x, b.x, c.x});
+	float max_x = std::max({a.x, b.x, c.x});
+	float min_y = std::min({a.y, b.y, c.y});
+	float max_y = std::max({a.y, b.y, c.y});
+
+	// Area functions
+	// float area = triangle_area(a, b, c);
+	float fa = dist_of_p_to_l(b, c, a);
+	float fb = dist_of_p_to_l(c, a, b);
+	float fc = dist_of_p_to_l(a, b, c);
+ 
+	Vec2 off_screen_point(-1, -1);
+	bool sa = fa * dist_of_p_to_l(b, c, off_screen_point) > 0, 
+			 sb = fb * dist_of_p_to_l(c, a, off_screen_point) > 0, 
+			 sc = fc * dist_of_p_to_l(a, b, off_screen_point) > 0;
+
+	// Rasterize the triangle
+	for (float y = std::floor(min_y) + 0.5; y <= max_y; ++y) {
+		for (float x = std::floor(min_x) + 0.5; x <= max_x; ++x) {
+			Vec2 v(x , y);
+			float alpha = dist_of_p_to_l(b, c, v) / fa;
+			float beta = dist_of_p_to_l(c, a, v) / fb;
+			float gamma = dist_of_p_to_l(a, b, v) / fc;
+// std::cout << "=======" << alpha << "," << beta << "," << gamma << "," << triangle_area(a, b, c) << std::endl;
+			// if (alpha >= 0 && beta >= 0 && gamma >= 0) {
+			if ((alpha > 0 || (alpha ==0 && sa)) && (beta > 0 || (beta==0 && sb)) && (gamma > 0 || (gamma==0 && sc) )) {
+				// Interpolate depth
+				float z = alpha * va.fb_position.z + beta * vb.fb_position.z + gamma * vc.fb_position.z;
+				// Interpolate attributes based on interpolation mode
+				Fragment frag;
+				frag.fb_position = Vec3(v, z);
+// std::cout << "find=======" << frag.fb_position << std::endl;
+				if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
+					// A1T3: flat triangles
+						frag.attributes = va.attributes;
+				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
+					// A1T5: screen-space smooth triangles
+					// Interpolate attributes linearly using barycentric coordinates
+					for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
+							frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
+							//std::cout << "attributes[]" << 
+							// printf("attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
 					}
 					
 					// Compute derivatives using forward differences
@@ -708,14 +876,16 @@ void Pipeline<p, P, flags>::rasterize_triangle(
 							// If the attribute is constant, the derivative is zero
 							frag.derivatives[i] = Vec2(0.0f, 0.0f);
 						} else {
-							// Compute d/dx: difference between current fragment and next fragment in x direction
+							
 							float dx = (alpha + 1.0f) * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
+							// printf("dx attributes[%d]: %f, %f, %f \n", i, (alpha + 1.0f) * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
 							// Compute d/dy: difference between current fragment and next fragment in y direction
 							float dy = alpha * va.attributes[i] + (beta + 1.0f) * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
+							// printf("dy attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], (beta + 1.0f) * vb.attributes[i], gamma * vc.attributes[i]);
 							frag.derivatives[i] = Vec2(dx, dy);
+							// std::cout << "derivatives[" << i << "]" << frag.derivatives[i] << std::endl;
 						}
 					}
-					
 				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
 						// A1T5: perspective-correct triangles
 						// Interpolate 1/w and attributes/w using barycentric coordinates

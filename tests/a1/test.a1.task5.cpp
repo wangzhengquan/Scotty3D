@@ -254,7 +254,7 @@ Test test_a1_task5_screen_simple_attribs("a1.task5.screen.simple.attribs", []() 
 		1.0f * -0.5f + 2.0f * 0.25f + 4.0f * 0.25f,
 		1.0f *  0.0f + 2.0f * -1.0f + 4.0f * 1.0f
 	};
-
+std::cout << "\n=========== attrib0_deriv: "<< attrib0_deriv << std::endl;
 	check_rasterize_triangles< ScreenPipeline >(
 		"thin triangle over (1.5,0.5) and (2.5,0.5)",
 		{ SPClippedVertex{ Vec3{ 1.0f, 0.5f, 0.5f }, 1.0f, { 1.0f } },
@@ -324,6 +324,50 @@ Test test_a1_task5_correct_persp("a1.task5.correct.persp", []() {
 		  CPClippedVertex{ Vec3{ 3.0f, 1.0f, 0.5f }, 2.0f, { 4.0f } } },
 		{ CPFragment{ Vec3{ 1.5f, 0.5f, 0.5f }, {1.8f}, { attrib0_deriv, Vec2{0.0f} } },
 		  CPFragment{ Vec3{ 2.5f, 0.5f, 0.5f }, {2.714285f}, { attrib0_deriv, Vec2{0.0f} } }}
+	);
+});
+
+
+
+Test test_a1_task5_screen_attribs("a1.task5.screen.attribs", []() {
+	check_rasterize_triangles<  ScreenPipeline >(
+		"triangle",
+		{ SPClippedVertex{ Vec3{ 1.0f, 0.5f, 0.5f }, 1.0f, { 1.0f } },
+		  SPClippedVertex{ Vec3{ 5.0f, 2.0f, 0.5f }, 1.0f, { 2.0f } },
+		  SPClippedVertex{ Vec3{ 3.0f, 6.0f, 0.5f }, 1.0f, { 4.0f } } },
+		{ SPFragment{ Vec3{ 1.5f, 1.5f, 0.5f }, {1.552632}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+		  SPFragment{ Vec3{ 2.5f, 1.5f, 0.5f }, {1.605263}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 1.5f, 0.5f }, {1.657895}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 2.5f, 0.5f }, {2.131579}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 2.5f, 0.5f }, {2.184211}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 4.5f, 2.5f, 0.5f }, {2.236842}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 3.5f, 0.5f }, {2.657895}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 3.5f, 0.5f }, {2.710526}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 4.5f, 0.5f }, {3.184211}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 4.5f, 0.5f }, {3.236842}, { Vec2(0.052632f, 0.526316f), Vec2{0.0f} } },
+		}
+	);
+});
+
+
+
+Test test_a1_task5_correct_persp_attribs("a1.task5.correct.persp.attribs", []() {
+	check_rasterize_triangles< CorrectPipeline >(
+		"triangle",
+		{ SPClippedVertex{ Vec3{ 1.0f, 0.5f, 0.5f }, 1.0f, { 1.0f } },
+		  SPClippedVertex{ Vec3{ 5.0f, 2.0f, 0.5f }, 2.0f, { 2.0f } },
+		  SPClippedVertex{ Vec3{ 3.0f, 6.0f, 0.5f }, 2.0f, { 4.0f } } },
+		{ SPFragment{ Vec3{ 1.5f, 1.5f, 0.5f }, {1.913043}, { Vec2(0.260870f, 0.956522f), Vec2{0.0f} } },
+		  SPFragment{ Vec3{ 2.5f, 1.5f, 0.5f }, {1.851852}, { Vec2(0.222222f, 0.814815f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 1.5f, 0.5f }, {1.806452}, { Vec2(0.193548f, 0.709678f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 2.5f, 0.5f }, {2.482759}, { Vec2(0.206897f, 0.758621f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 2.5f, 0.5f }, {2.363636}, { Vec2(0.181818f, 0.666667f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 4.5f, 2.5f, 0.5f }, {2.270270}, { Vec2(0.162162f, 0.594594f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 3.5f, 0.5f }, {3.032258}, { Vec2(0.193548f, 0.709677f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 3.5f, 0.5f }, {2.857143}, { Vec2(0.171428f, 0.628572f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 2.5f, 4.5f, 0.5f }, {3.515152}, { Vec2(0.181818f, 0.666667f), Vec2{0.0f} } },
+			SPFragment{ Vec3{ 3.5f, 4.5f, 0.5f }, {3.297297}, { Vec2(0.162162f, 0.594594f), Vec2{0.0f} } },
+		}
 	);
 });
 
