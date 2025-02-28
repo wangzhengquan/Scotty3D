@@ -4,7 +4,7 @@
  * Various Program (vertex + shader) programs for use with software rasterizer pipeline.
  *
  */
-
+#include <iostream>
 #include "../lib/mathlib.h"
 #include "../scene/texture.h"
 
@@ -111,8 +111,7 @@ struct Lambertian {
 		Vec2 fdy_texcoord{fd[FA_TexCoordU].y, fd[FA_TexCoordV].y};
 
 		// size of texture image:
-		[[maybe_unused]] Vec2 wh =
-			Vec2(float(parameters.image->image.w), float(parameters.image->image.h));
+		Vec2 wh = Vec2(float(parameters.image->image.w), float(parameters.image->image.h));
 
 		//-----
 		// A1T6: lod
@@ -123,11 +122,17 @@ struct Lambertian {
 		// reading onward, you will discover that \rho can be computed in a number of ways
 		//  it is up to you to select one that makes sense in this context
 
-		float lod = 0.0f; //<-- replace this line
-		//-----
+		// Compute L as the maximum rate of change
+    float L = std::max((fdx_texcoord * wh).norm(), (fdy_texcoord * wh).norm());
+
+    // Compute LOD as log2(L)
+    float lod = 0.0f;
+    if (L > 0.0f) {
+        lod = std::log2(L);
+    }
 
 		Vec3 normal = fa_normal.unit();
-
+// std::cout << "======lod=" << lod << ", wh=" << wh << std::endl;
 		Spectrum light =
 			// sun contribution:
 			parameters.sun_energy * std::max(dot(parameters.sun_direction, normal), 0.0f)
