@@ -36,6 +36,10 @@ void Pipeline<primitive_type, Program, flags>::run(std::vector<Vertex> const& ve
 	//   	 around some subset of the code.
 	// 		 You will also need to transform the input and output of the rasterize_* functions to
 	// 	     account for the fact they deal with pixels centered at (0.5,0.5).
+	
+	// Get the sample pattern and number of samples per pixel
+	std::vector<Vec3> const& samples = framebuffer.sample_pattern.centers_and_weights;
+	uint32_t samples_per_pixel = static_cast<uint32_t>(samples.size());
 
 	std::vector<ShadedVertex> shaded_vertices;
 	shaded_vertices.reserve(vertices.size());
@@ -102,104 +106,118 @@ void Pipeline<primitive_type, Program, flags>::run(std::vector<Vertex> const& ve
 
 	//--------------------------
 	// rasterize primitives:
+	for (uint32_t s = 0; s < samples_per_pixel; ++s) {
+		// Shift the positions of the ClippedVertices to account for the sample offset
+		Vec2 sample_offset = Vec2(samples[s].x - 0.5f, samples[s].y - 0.5f);
 
-	std::vector<Fragment> fragments;
-
-	// helper used to put output of rasterization functions into fragments:
-	auto emit_fragment = [&](Fragment const& f) { fragments.emplace_back(f); };
-
-	// actually do rasterization:
-	if constexpr (primitive_type == PrimitiveType::Lines) {
-		for (uint32_t i = 0; i + 1 < clipped_vertices.size(); i += 2) {
-			rasterize_line(clipped_vertices[i], clipped_vertices[i + 1], emit_fragment);
-		}
-	} else if constexpr (primitive_type == PrimitiveType::Triangles) {
-		for (uint32_t i = 0; i + 2 < clipped_vertices.size(); i += 3) {
-			rasterize_triangle(clipped_vertices[i], clipped_vertices[i + 1], clipped_vertices[i + 2], emit_fragment);
-		}
-	} else {
-		static_assert(primitive_type == PrimitiveType::Lines, "Unsupported primitive type.");
-	}
-
-	//--------------------------
-	// depth test + shade + blend fragments:
-	uint32_t out_of_range = 0; // check if rasterization produced fragments outside framebuffer 
-							   // (indicates something is wrong with clipping)
-	for (auto const& f : fragments) {
-
-		// fragment location (in pixels):
-		int32_t x = (int32_t)std::floor(f.fb_position.x);
-		int32_t y = (int32_t)std::floor(f.fb_position.y);
-
-		// if clipping is working properly, this condition shouldn't be needed;
-		// however, it prevents crashes while you are working on your clipping functions,
-		// so we suggest leaving it in place:
-		if (x < 0 || (uint32_t)x >= framebuffer.width || 
-		    y < 0 || (uint32_t)y >= framebuffer.height) {
-			++out_of_range;
-			continue;
+		// Shift the positions of the ClippedVertices
+		std::vector<ClippedVertex> supersample_clipped_vertices;
+		supersample_clipped_vertices.reserve(clipped_vertices.size());
+		for (auto const& cv : clipped_vertices) {
+				ClippedVertex shifted_cv = cv;
+				shifted_cv.fb_position.x += sample_offset.x;
+				shifted_cv.fb_position.y += sample_offset.y;
+				supersample_clipped_vertices.emplace_back(shifted_cv);
 		}
 
-		// local names that refer to destination sample in framebuffer:
-		float& fb_depth = framebuffer.depth_at(x, y, 0);
-		Spectrum& fb_color = framebuffer.color_at(x, y, 0);
+		std::vector<Fragment> fragments;
 
+		// helper used to put output of rasterization functions into fragments:
+		auto emit_fragment = [&](Fragment const& f) { fragments.emplace_back(f); };
 
-		// depth test:
-		if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Always) {
-			// "Always" means the depth test always passes.
-		} else if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Never) {
-			// "Never" means the depth test never passes.
-			continue; //discard this fragment
-		} else if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Less) {
-			// "Less" means the depth test passes when the new fragment has depth less than the stored depth.
-			// A1T4: Depth_Less
-			// TODO: implement depth test! We want to only emit fragments that have a depth less than the stored depth, hence "Depth_Less".
-			if (f.fb_position.z >= fb_depth){
-				continue;
+		// actually do rasterization:
+		if constexpr (primitive_type == PrimitiveType::Lines) {
+			for (uint32_t i = 0; i + 1 < supersample_clipped_vertices.size(); i += 2) {
+				rasterize_line(supersample_clipped_vertices[i], supersample_clipped_vertices[i + 1], emit_fragment);
+			}
+		} else if constexpr (primitive_type == PrimitiveType::Triangles) {
+			for (uint32_t i = 0; i + 2 < supersample_clipped_vertices.size(); i += 3) {
+				rasterize_triangle(supersample_clipped_vertices[i], supersample_clipped_vertices[i + 1], supersample_clipped_vertices[i + 2], emit_fragment);
 			}
 		} else {
-			static_assert((flags & PipelineMask_Depth) <= Pipeline_Depth_Always, "Unknown depth test flag.");
+			static_assert(primitive_type == PrimitiveType::Lines, "Unsupported primitive type.");
 		}
 
-		// if depth test passes, and depth writes aren't disabled, write depth to depth buffer:
-		if constexpr (!(flags & Pipeline_DepthWriteDisableBit)) {
-			fb_depth = f.fb_position.z;
-		}
+		//--------------------------
+		// depth test + shade + blend fragments:
+		uint32_t out_of_range = 0; // check if rasterization produced fragments outside framebuffer 
+									// (indicates something is wrong with clipping)
+		for (auto const& f : fragments) {
 
-		// shade fragment:
-		ShadedFragment sf;
-		sf.fb_position = f.fb_position;
-		Program::shade_fragment(parameters, f.attributes, f.derivatives, &sf.color, &sf.opacity);
+			// fragment location (in pixels):
+			int32_t x = (int32_t)std::floor(f.fb_position.x);
+			int32_t y = (int32_t)std::floor(f.fb_position.y);
 
-		// write color to framebuffer if color writes aren't disabled:
-		if constexpr (!(flags & Pipeline_ColorWriteDisableBit)) {
-			// blend fragment:
-			if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Replace) {
-				fb_color = sf.color;
-			} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Add) {
-				// A1T4: Blend_Add
-				// TODO: framebuffer color should have fragment color multiplied by fragment opacity added to it.
-				fb_color += sf.color * sf.opacity;
-			} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Over) {
-				// A1T4: Blend_Over
-				// TODO: set framebuffer color to the result of "over" blending (also called "alpha blending") the fragment color over the framebuffer color, using the fragment's opacity
-				// 		 You may assume that the framebuffer color has its alpha premultiplied already, and you just want to compute the resulting composite color
-				fb_color = sf.color * sf.opacity + fb_color * (1.0f - sf.opacity);
+			// if clipping is working properly, this condition shouldn't be needed;
+			// however, it prevents crashes while you are working on your clipping functions,
+			// so we suggest leaving it in place:
+			if (x < 0 || (uint32_t)x >= framebuffer.width || 
+					y < 0 || (uint32_t)y >= framebuffer.height) {
+				++out_of_range;
+				continue;
+			}
+
+			// local names that refer to destination sample in framebuffer:
+			float& fb_depth = framebuffer.depth_at(x, y, s);
+			Spectrum& fb_color = framebuffer.color_at(x, y, s);
+
+
+			// depth test:
+			if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Always) {
+				// "Always" means the depth test always passes.
+			} else if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Never) {
+				// "Never" means the depth test never passes.
+				continue; //discard this fragment
+			} else if constexpr ((flags & PipelineMask_Depth) == Pipeline_Depth_Less) {
+				// "Less" means the depth test passes when the new fragment has depth less than the stored depth.
+				// A1T4: Depth_Less
+				// TODO: implement depth test! We want to only emit fragments that have a depth less than the stored depth, hence "Depth_Less".
+				if (f.fb_position.z >= fb_depth){
+					continue;
+				}
 			} else {
-				static_assert((flags & PipelineMask_Blend) <= Pipeline_Blend_Over, "Unknown blending flag.");
+				static_assert((flags & PipelineMask_Depth) <= Pipeline_Depth_Always, "Unknown depth test flag.");
+			}
+
+			// if depth test passes, and depth writes aren't disabled, write depth to depth buffer:
+			if constexpr (!(flags & Pipeline_DepthWriteDisableBit)) {
+				fb_depth = f.fb_position.z;
+			}
+
+			// shade fragment:
+			ShadedFragment sf;
+			sf.fb_position = f.fb_position;
+			Program::shade_fragment(parameters, f.attributes, f.derivatives, &sf.color, &sf.opacity);
+
+			// write color to framebuffer if color writes aren't disabled:
+			if constexpr (!(flags & Pipeline_ColorWriteDisableBit)) {
+				// blend fragment:
+				if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Replace) {
+					fb_color = sf.color;
+				} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Add) {
+					// A1T4: Blend_Add
+					// TODO: framebuffer color should have fragment color multiplied by fragment opacity added to it.
+					fb_color += sf.color * sf.opacity;
+				} else if constexpr ((flags & PipelineMask_Blend) == Pipeline_Blend_Over) {
+					// A1T4: Blend_Over
+					// TODO: set framebuffer color to the result of "over" blending (also called "alpha blending") the fragment color over the framebuffer color, using the fragment's opacity
+					// 		 You may assume that the framebuffer color has its alpha premultiplied already, and you just want to compute the resulting composite color
+					fb_color = sf.color * sf.opacity + fb_color * (1.0f - sf.opacity);
+				} else {
+					static_assert((flags & PipelineMask_Blend) <= Pipeline_Blend_Over, "Unknown blending flag.");
+				}
 			}
 		}
-	}
-	if (out_of_range > 0) {
-		if constexpr (primitive_type == PrimitiveType::Lines) {
-			warn("Produced %d fragments outside framebuffer; this indicates something is likely "
-			     "wrong with the clip_line function.",
-			     out_of_range);
-		} else if constexpr (primitive_type == PrimitiveType::Triangles) {
-			warn("Produced %d fragments outside framebuffer; this indicates something is likely "
-			     "wrong with the clip_triangle function.",
-			     out_of_range);
+		if (out_of_range > 0) {
+			if constexpr (primitive_type == PrimitiveType::Lines) {
+				warn("Produced %d fragments outside framebuffer; this indicates something is likely "
+						"wrong with the clip_line function.",
+						out_of_range);
+			} else if constexpr (primitive_type == PrimitiveType::Triangles) {
+				warn("Produced %d fragments outside framebuffer; this indicates something is likely "
+						"wrong with the clip_triangle function.",
+						out_of_range);
+			}
 		}
 	}
 }
@@ -813,110 +831,7 @@ void Pipeline<p, P, flags>::rasterize_triangle1(
 		}
 	}
 }
-
-template<PrimitiveType p, class P, uint32_t flags>
-void Pipeline<p, P, flags>::rasterize_triangle3(
-	ClippedVertex const& va, ClippedVertex const& vb, ClippedVertex const& vc,
-	std::function<void(Fragment const&)> const& emit_fragment) {
-	// Extract positions
-	Vec2 a = va.fb_position.xy();
-	Vec2 b = vb.fb_position.xy();
-	Vec2 c = vc.fb_position.xy();
-
-	// Bounding box of the triangle
-	float min_x = std::min({a.x, b.x, c.x});
-	float max_x = std::max({a.x, b.x, c.x});
-	float min_y = std::min({a.y, b.y, c.y});
-	float max_y = std::max({a.y, b.y, c.y});
-
-	// Area functions
-	// float area = triangle_area(a, b, c);
-	float fa = dist_of_p_to_l(b, c, a);
-	float fb = dist_of_p_to_l(c, a, b);
-	float fc = dist_of_p_to_l(a, b, c);
  
-	Vec2 off_screen_point(-1, -1);
-	bool sa = fa * dist_of_p_to_l(b, c, off_screen_point) > 0, 
-			 sb = fb * dist_of_p_to_l(c, a, off_screen_point) > 0, 
-			 sc = fc * dist_of_p_to_l(a, b, off_screen_point) > 0;
-
-	// Rasterize the triangle
-	for (float y = std::floor(min_y) + 0.5; y <= max_y; ++y) {
-		for (float x = std::floor(min_x) + 0.5; x <= max_x; ++x) {
-			Vec2 v(x , y);
-			float alpha = dist_of_p_to_l(b, c, v) / fa;
-			float beta = dist_of_p_to_l(c, a, v) / fb;
-			float gamma = dist_of_p_to_l(a, b, v) / fc;
-// std::cout << "=======" << alpha << "," << beta << "," << gamma << "," << triangle_area(a, b, c) << std::endl;
-			// if (alpha >= 0 && beta >= 0 && gamma >= 0) {
-			if ((alpha > 0 || (alpha ==0 && sa)) && (beta > 0 || (beta==0 && sb)) && (gamma > 0 || (gamma==0 && sc) )) {
-				// Interpolate depth
-				float z = alpha * va.fb_position.z + beta * vb.fb_position.z + gamma * vc.fb_position.z;
-				// Interpolate attributes based on interpolation mode
-				Fragment frag;
-				frag.fb_position = Vec3(v, z);
-// std::cout << "find=======" << frag.fb_position << std::endl;
-				if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Flat) {
-					// A1T3: flat triangles
-						frag.attributes = va.attributes;
-				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Smooth) {
-					// A1T5: screen-space smooth triangles
-					// Interpolate attributes linearly using barycentric coordinates
-					for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
-							frag.attributes[i] = alpha * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i];
-							//std::cout << "attributes[]" << 
-							// printf("attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
-					}
-					
-					// Compute derivatives using forward differences
-					for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
-						// Check if the attributes are constant across the triangle
-						bool is_constant = (va.attributes[i] == vb.attributes[i] && vb.attributes[i] == vc.attributes[i]);
-						if (is_constant) {
-							// If the attribute is constant, the derivative is zero
-							frag.derivatives[i] = Vec2(0.0f, 0.0f);
-						} else {
-							
-							float dx = (alpha + 1.0f) * va.attributes[i] + beta * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
-							// printf("dx attributes[%d]: %f, %f, %f \n", i, (alpha + 1.0f) * va.attributes[i], beta * vb.attributes[i], gamma * vc.attributes[i]);
-							// Compute d/dy: difference between current fragment and next fragment in y direction
-							float dy = alpha * va.attributes[i] + (beta + 1.0f) * vb.attributes[i] + gamma * vc.attributes[i] - frag.attributes[i];
-							// printf("dy attributes[%d]: %f, %f, %f \n", i, alpha * va.attributes[i], (beta + 1.0f) * vb.attributes[i], gamma * vc.attributes[i]);
-							frag.derivatives[i] = Vec2(dx, dy);
-							// std::cout << "derivatives[" << i << "]" << frag.derivatives[i] << std::endl;
-						}
-					}
-				} else if constexpr ((flags & PipelineMask_Interp) == Pipeline_Interp_Correct) {
-						// A1T5: perspective-correct triangles
-						// Interpolate 1/w and attributes/w using barycentric coordinates
-						float inv_w = alpha * va.inv_w + beta * vb.inv_w + gamma * vc.inv_w;
-						for (uint32_t i = 0; i < frag.attributes.size(); ++i) {
-								float attr_over_w = alpha * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w;
-								frag.attributes[i] = attr_over_w / inv_w;
-						}
-					
-						// Compute derivatives using forward differences
-						for (uint32_t i = 0; i < frag.derivatives.size(); ++i) {
-							// Check if the attributes are constant across the triangle
-							bool is_constant = (va.attributes[i] == vb.attributes[i] && vb.attributes[i] == vc.attributes[i]);
-							if (is_constant) {
-								// If the attribute is constant, the derivative is zero
-								frag.derivatives[i] = Vec2(0.0f, 0.0f);
-							} else {
-								// Compute d/dx: difference between current fragment and next fragment in x direction
-								float dx = ((alpha + 1.0f) * va.attributes[i] * va.inv_w + beta * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
-								// Compute d/dy: difference between current fragment and next fragment in y direction
-								float dy = (alpha * va.attributes[i] * va.inv_w + (beta + 1.0f) * vb.attributes[i] * vb.inv_w + gamma * vc.attributes[i] * vc.inv_w) / inv_w - frag.attributes[i];
-								frag.derivatives[i] = Vec2(dx, dy);
-							}
-						}
-				}
-
-				emit_fragment(frag);
-			}
-		}
-	}
-}
 //-------------------------------------------------------------------------
 // compile instantiations for all programs and blending and testing types:
 

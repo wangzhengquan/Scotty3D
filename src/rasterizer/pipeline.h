@@ -154,6 +154,8 @@ struct Pipeline {
 	//  	framebuffer (must not be null): framebuffer to write results into
 	static void run(std::vector<Vertex> const& vertices,
 	                typename Program::Parameters const& parameters, Framebuffer* framebuffer);
+	static void run1(std::vector<Vertex> const& vertices,
+	                typename Program::Parameters const& parameters, Framebuffer* framebuffer);
 private:
 	static void rasterize_line1(
 		ClippedVertex const &a, ClippedVertex const &b, //line (a,b)
