@@ -160,8 +160,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::bisect_edge(EdgeRef e) {
 	interpolate_data({t, t->next}, t2); //set corner_uv, corner_normal
 
 	// The following elements aren't necessary for the bisect_edge, but they are here to demonstrate phase 4
-    FaceRef f_not_used = emplace_face();
-    HalfedgeRef h_not_used = emplace_halfedge();
+	FaceRef f_not_used = emplace_face();
+	HalfedgeRef h_not_used = emplace_halfedge();
 
 	// Phase 3: Reassign connectivity (careful about ordering so you don't overwrite values you may need later!)
 
@@ -199,8 +199,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::bisect_edge(EdgeRef e) {
 
 
 	// Phase 4: Delete unused elements
-    erase_face(f_not_used);
-    erase_halfedge(h_not_used);
+	erase_face(f_not_used);
+	erase_halfedge(h_not_used);
 
 	// Phase 5: Return the correct iterator
 	return vm;
@@ -331,8 +331,60 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
  */
 std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	//A2L1: Flip Edge
-	
-    return std::nullopt;
+	// Check if the edge is a boundary edge
+	if (e->on_boundary()) {
+			return std::nullopt;
+	}
+
+	// Collect the necessary halfedges
+	HalfedgeRef h = e->halfedge;
+	HalfedgeRef t = h->twin;
+
+	HalfedgeRef h_next = h->next;
+	HalfedgeRef h_prev = *prev(h);
+	// std::cout << "h_prev:" << std::to_string(h_prev->id)<< std::endl;
+	HalfedgeRef h_next_next = h_next->next;
+
+	HalfedgeRef t_next = t->next;
+	HalfedgeRef t_prev = *prev(t);
+	// std::cout << "t_prev:" << std::to_string(t_prev->id)<<  std::endl;
+	HalfedgeRef t_next_next = t_next->next;
+
+	// Collect the necessary vertices
+	VertexRef hv = h->vertex;          // Vertex at the start of h1
+	VertexRef tv = t->vertex;          // Vertex at the start of h2
+	VertexRef hnnv = h_next_next->vertex;     // Vertex at the end of h1_prev
+	VertexRef tnnv = t_next_next->vertex;     // Vertex at the end of h2_prev
+
+	// Collect the necessary faces
+	FaceRef fh = h->face;
+	FaceRef ft = t->face;
+
+	// Reassign the connectivity
+	h->next = h_next_next;
+	h_prev->next = t_next;
+	t_next->next = h;
+	 
+	t->next = t_next_next;
+	t_prev->next = h_next;
+	h_next->next = t;
+
+	// Update the vertex pointers
+	h->vertex = tnnv;  // h now points to v4
+	t->vertex = hnnv;  // t now points to v3
+
+	// Update the face pointers
+	h_next->face = ft;
+	t_next->face = fh;
+
+	// Update the halfedge pointers for the vertices
+	hv->halfedge = t_next;
+	tv->halfedge = h_next;
+	hnnv->halfedge = t;
+	tnnv->halfedge = h;
+
+	// Return the edge that was flipped
+	return e;
 }
 
 

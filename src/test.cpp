@@ -785,3 +785,4 @@ float Test::closest_distance(const Halfedge_Mesh& from, const Vec3& to) {
 
 	return d;
 }
+

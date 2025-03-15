@@ -1,8 +1,14 @@
 #include "test.h"
 #include "geometry/halfedge.h"
+#include <iostream>
 
-static void expect_flip(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &after) {
+static void expect_flip(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &expect) {
+	// std::cout << "\nbefore:\n" << mesh.describe() << std::endl;
 	if (auto ret = mesh.flip_edge(edge)) {
+		// std::cout << "\nafter:\n" << mesh.describe() << std::endl;
+		
+		// std::cout << "\nexpect:\n" << expect.describe() << std::endl;
+		
 		if (auto msg = mesh.validate()) {
 			throw Test::error("Invalid mesh: " + msg.value().second);
 		}
@@ -11,7 +17,7 @@ static void expect_flip(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfed
 			throw Test::error("Did not return the same edge!");
 		}
 		// check mesh shape:
-		if (auto difference = Test::differs(mesh, after, Test::CheckAllBits)) {
+		if (auto difference = Test::differs(mesh, expect, Test::CheckAllBits)) {
 			throw Test::error("Resulting mesh did not match expected: " + *difference);
 		}
 	} else {

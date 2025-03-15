@@ -113,6 +113,16 @@ public:
 	//turn a non-boundary face into a boundary face
 	std::optional<FaceRef> make_boundary(FaceRef f);
 
+	std::optional<HalfedgeRef> prev(HalfedgeRef _h) {
+		HalfedgeRef h = _h;
+		HalfedgeRef pre;
+		do {
+			pre = h;
+			h = h->next;
+		} while (h != _h && h != halfedges.end());
+		return pre;
+	}
+
 
 	//--- unification ---
 
@@ -308,7 +318,6 @@ public:
 			twin = twin_; next = next_; vertex = vertex_; edge = edge_; face = face_;
 		}
 
-
 	private:
 		Halfedge(uint32_t id_) : id(id_) { }
 		friend class Halfedge_Mesh;
@@ -478,7 +487,10 @@ public:
 private:
 	
 	//a fresh element id; assigned + incremented by emplace_*() functions:
-	uint32_t next_id = 0;
+	uint32_t next_edge_id = 0;
+	uint32_t next_halfedge_id = 0;
+	uint32_t next_face_id = 0;
+	uint32_t next_vertex_id = 0;
 
 	//free lists used by the erase() and emplace_*() functions:
 	std::list<Vertex> free_vertices;

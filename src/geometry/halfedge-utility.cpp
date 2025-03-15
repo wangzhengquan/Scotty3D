@@ -49,12 +49,12 @@ Halfedge_Mesh::VertexRef Halfedge_Mesh::emplace_vertex() {
 	VertexRef vertex;
 	if (free_vertices.empty()) {
 		//allocate a new vertex:
-		vertex = vertices.emplace(vertices.end(), Vertex(next_id++));
+		vertex = vertices.emplace(vertices.end(), Vertex(next_vertex_id++));
 	} else {
 		//recycle vertex from free list:
 		vertex = free_vertices.begin();
 		vertices.splice(vertices.end(), free_vertices, free_vertices.begin());
-		*vertex = Vertex(next_id++); //set to default values
+		*vertex = Vertex(next_vertex_id++); //set to default values
 	}
 	//make sure vertex doesn't reference anything:
 	vertex->halfedge = halfedges.end();
@@ -65,12 +65,12 @@ Halfedge_Mesh::EdgeRef Halfedge_Mesh::emplace_edge(bool sharp) {
 	EdgeRef edge;
 	if (free_edges.empty()) {
 		//allocate a new edge:
-		edge = edges.emplace(edges.end(), Edge(next_id++, sharp));
+		edge = edges.emplace(edges.end(), Edge(next_edge_id++, sharp));
 	} else {
 		//recycle edge from free list:
 		edge = free_edges.begin();
 		edges.splice(edges.end(), free_edges, free_edges.begin());
-		*edge = Edge(next_id++, sharp); //set to default values
+		*edge = Edge(next_edge_id++, sharp); //set to default values
 	}
 	//make sure edge doesn't reference anything:
 	edge->halfedge = halfedges.end();
@@ -81,12 +81,12 @@ Halfedge_Mesh::FaceRef Halfedge_Mesh::emplace_face(bool boundary) {
 	FaceRef face;
 	if (free_faces.empty()) {
 		//allocate a new face:
-		face = faces.emplace(faces.end(), Face(next_id++, boundary));
+		face = faces.emplace(faces.end(), Face(next_face_id++, boundary));
 	} else {
 		//recycle face from free list:
 		face = free_faces.begin();
 		faces.splice(faces.end(), free_faces, free_faces.begin());
-		*face = Face(next_id++, boundary); //set to default values
+		*face = Face(next_face_id++, boundary); //set to default values
 	}
 	face->halfedge = halfedges.end();
 	return face;
@@ -98,10 +98,10 @@ Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::emplace_halfedge() {
 		//move from free list:
 		halfedge = free_halfedges.begin();
 		halfedges.splice(halfedges.end(), free_halfedges, free_halfedges.begin());
-		*halfedge = Halfedge(next_id++); //set to default values
+		*halfedge = Halfedge(next_halfedge_id++); //set to default values
 	} else {
 		//allocate a new halfedge:
-		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_id++));
+		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_halfedge_id++));
 	}
 	//set pointers to default values:
 	halfedge->twin = halfedges.end();
@@ -674,8 +674,11 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	Halfedge_Mesh mesh;
 
 	//new mesh should also have the same next_id as this one:
-	mesh.next_id = next_id;
-
+	// mesh.next_id = next_id;
+	mesh.next_edge_id = next_edge_id;
+	mesh.next_halfedge_id = next_halfedge_id;
+	mesh.next_face_id = next_face_id;
+	mesh.next_vertex_id = next_vertex_id;
 	// Copy geometry from the original mesh and create a map from
 	// pointers in the original mesh to those in the new mesh.
 	for (VertexCRef v = vertices.begin(); v != vertices.end(); v++) {
@@ -754,21 +757,21 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 	const bool add_corner_normals = corner_normal_idxs.size() >= num_faces;
 	const bool add_corner_uvs = corner_uv_idxs.size() >= num_faces;
 	//helper to add a face (and, later, boundary):
-	auto add_loop = [&](std::vector< Index > const &loop, bool boundary,
+	auto add_face = [&](std::vector< Index > const &fInd, bool boundary,
 					    std::vector< Index> const &n_loop = std::vector<Index>{}, 
 						std::vector< Index> const &uv_loop = std::vector<Index>{}) {
-		assert(loop.size() >= 3);
+		assert(fInd.size() >= 3);
 		
-		for (uint32_t j = 0; j < loop.size(); ++j) {
+		for (uint32_t j = 0; j < fInd.size(); ++j) {
 			//omit adding a face with vertices of the same index, otherwise crashes on cylinder/cone
-			if (loop[j] == loop[(j + 1) % loop.size()]) { return; }
+			if (fInd[j] == fInd[(j + 1) % fInd.size()]) { return; }
 		}
 
 		FaceRef face = mesh.emplace_face(boundary);
 		HalfedgeRef prev = mesh.halfedges.end(); //keep track of previous edge around face to set next pointer
-		for (uint32_t i = 0; i < loop.size(); ++i) {
-			Index a = loop[i];
-			Index b = loop[(i + 1) % loop.size()];
+		for (uint32_t i = 0; i < fInd.size(); ++i) {
+			Index a = fInd[i];
+			Index b = fInd[(i + 1) % fInd.size()];
 			assert(a != b);
 
 			HalfedgeRef halfedge = mesh.emplace_halfedge();
@@ -812,9 +815,9 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 
 	//add all faces:
 	for (uint32_t i = 0; i < num_faces; i++) {
-		if(add_corner_normals && add_corner_uvs) add_loop(faces_[i], false, corner_normal_idxs[i], corner_uv_idxs[i]);
-		else if(add_corner_normals) add_loop(faces_[i], false, corner_normal_idxs[i]);
-		else add_loop(faces_[i], false);
+		if(add_corner_normals && add_corner_uvs) add_face(faces_[i], false, corner_normal_idxs[i], corner_uv_idxs[i]);
+		else if(add_corner_normals) add_face(faces_[i], false, corner_normal_idxs[i]);
+		else add_face(faces_[i], false);
 	}
 
 	// All halfedges created so far have valid next pointers, but some may be missing twins because they are at a boundary.
@@ -831,27 +834,27 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 
 	//now pull out boundary loops until all edges are exhausted:
 	while (!next_on_boundary.empty()) {
-		std::vector< Index > loop;
-		loop.emplace_back(next_on_boundary.begin()->first);
+		std::vector< Index > fInd;
+		fInd.emplace_back(next_on_boundary.begin()->first);
 
 		do {
 			//look up next hop on the boundary:
-			auto next = next_on_boundary.find(loop.back());
+			auto next = next_on_boundary.find(fInd.back());
 			//should never be dead ends on boundary:
 			assert(next != next_on_boundary.end());
 
 			//add next hop to loop:
-			loop.emplace_back(next->second);
+			fInd.emplace_back(next->second);
 			//...and remove from nexts structure:
 			next_on_boundary.erase(next);
-		} while (loop[0] != loop.back());
+		} while (fInd[0] != fInd.back());
 
-		loop.pop_back(); //remove duplicated first/last element
+		fInd.pop_back(); //remove duplicated first/last element
 
-		assert(loop.size() >= 3); //all faces must be non-degenerate
+		assert(fInd.size() >= 3); //all faces must be non-degenerate
 
 		//add boundary loop:
-		add_loop(loop, true);
+		add_face(fInd, true);
 	}
 
 	//with boundary faces created, mesh should be ready to go with all edges nicely twinned.
