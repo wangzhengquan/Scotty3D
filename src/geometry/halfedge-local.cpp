@@ -376,6 +376,9 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	// Update the face pointers
 	h_next->face = ft;
 	t_next->face = fh;
+	ft->halfedge = h_next;
+	fh->halfedge = t_next;
+
 
 	// Update the halfedge pointers for the vertices
 	hv->halfedge = t_next;

@@ -4,6 +4,9 @@
 
 static void expect_flip(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &expect) {
 	// std::cout << "\nbefore:\n" << mesh.describe() << std::endl;
+	// if (auto msg = mesh.validate()) {
+	// 	throw Test::error("Invalid mesh1: " + msg.value().second);
+	// }
 	if (auto ret = mesh.flip_edge(edge)) {
 		// std::cout << "\nafter:\n" << mesh.describe() << std::endl;
 		
@@ -55,7 +58,7 @@ Test test_a2_l1_flip_edge_basic_simple("a2.l1.flip_edge.basic.simple", []() {
 	});
 	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
 
-	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+	Halfedge_Mesh expect = Halfedge_Mesh::from_indexed_faces({
 		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
 		                                            Vec3(2.2f, 0.0f, 0.0f),
 		Vec3(-1.3f,-0.7f, 0.0f), Vec3(1.4f, -1.0f, 0.0f)
@@ -64,7 +67,28 @@ Test test_a2_l1_flip_edge_basic_simple("a2.l1.flip_edge.basic.simple", []() {
 		{0, 2, 1}
 	});
 
-	expect_flip(mesh, edge, after);
+	expect_flip(mesh, edge, expect);
+});
+
+Test test_a2_l1_flip_edge_basic_simple2("a2.l1.flip_edge.basic.simple2", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f), Vec3(2.2f, 0.0f, 0.0f),
+		Vec3(-1.3f,-0.7f, 0.0f) 
+	}, {
+		{0, 3, 2}, 
+		{0, 2, 1}
+	});
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
+
+	Halfedge_Mesh expect = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f), Vec3(2.2f, 0.0f, 0.0f),
+		Vec3(-1.3f,-0.7f, 0.0f)
+	}, {
+		{0, 3, 1}, 
+		{1, 3, 2}
+	});
+
+	expect_flip(mesh, edge, expect);
 });
 
 /*
