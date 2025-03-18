@@ -719,20 +719,6 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	return mesh;
 }
 
-namespace std {
-template< typename A, typename B >
-struct hash< std::pair< A, B > > {
-	size_t operator()(std::pair< A, B > const &key) const {
-		static const std::hash< A > ha;
-		static const std::hash< B > hb;
-		size_t hf = ha(key.first);
-		size_t hs = hb(key.second);
-		//NOTE: if this were C++20 we could use std::rotr or std::rotl
-		return hf ^ (hs << (sizeof(size_t)*4)) ^ (hs >> (sizeof(size_t)*4));
-	}
-};
-}
-
 Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &vertices_, 
 		std::vector< std::vector< Index > > const &faces_,
 		std::vector< std::vector< Index > > const &corner_normal_idxs,
@@ -827,6 +813,7 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 	//first, look for all un-twinned halfedges to figure out the shape of the boundary:
 	for (auto const &[ from_to, halfedge ] : halfedges) {
 		if (halfedge->twin == mesh.halfedges.end()) {
+			// std::cout << "next_on_boundary: " << from_to.second << "," << from_to.first << std::endl;
 			auto ret = next_on_boundary.emplace(from_to.second, from_to.first); //twin needed on the boundary
 			assert(ret.second); //every boundary vertex should have a unique successor because the boundary is "half-disc-like"
 		}

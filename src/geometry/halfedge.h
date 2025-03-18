@@ -544,3 +544,18 @@ namespace std {
 	HASH_BY_ADDRESS( Halfedge_Mesh::HalfedgeCRef );
 	#undef HASH_BY_ADDRESS
 } // namespace std
+
+
+namespace std {
+template< typename A, typename B >
+struct hash< std::pair< A, B > > {
+	size_t operator()(std::pair< A, B > const &key) const {
+		static const std::hash< A > ha;
+		static const std::hash< B > hb;
+		size_t hf = ha(key.first);
+		size_t hs = hb(key.second);
+		//NOTE: if this were C++20 we could use std::rotr or std::rotl
+		return hf ^ (hs << (sizeof(size_t)*4)) ^ (hs >> (sizeof(size_t)*4));
+	}
+};
+}
