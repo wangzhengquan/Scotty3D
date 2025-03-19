@@ -556,17 +556,24 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	std::vector<HalfedgeRef> v2_halfedges;
 
 	HalfedgeRef h = v1->halfedge;
+	bool v1_hasBoundryHalfedge = false, v2_hasBoundryHalfedge = false;
 	do {
 			v1_halfedges.push_back(h);
+			v1_hasBoundryHalfedge = v1_hasBoundryHalfedge || h->face->boundary;
 			h = h->twin->next;
 	} while (h != v1->halfedge);
 
 	h = v2->halfedge;
 	do {
 			v2_halfedges.push_back(h);
+			v2_hasBoundryHalfedge = v2_hasBoundryHalfedge || h->face->boundary;
 			h = h->twin->next;
 	} while (h != v2->halfedge);
 
+	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
+		return std::nullopt;
+	}
+	 
 	// Update the vertex pointers for the surrounding halfedges
 	for (HalfedgeRef he : v1_halfedges) {
 		assert(he->vertex == v1);

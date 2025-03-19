@@ -155,7 +155,8 @@ Test test_a2_l3_collapse_edge_basic_hard2("a2.l3.collapse_edge.basic.hard2", [](
 	});
 
 	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
-
+  auto ret = mesh.collapse_edge(edge);
+	assert(!ret);
 	// Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
 	// 	Vec3(-1.0f, 1.0f, 0.0f),  Vec3(1.1f, 1.0f, 0.0f),
 	// 							 Vec3(0.6f, 0.0f, 0.0f),
