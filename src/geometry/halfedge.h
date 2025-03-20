@@ -318,6 +318,18 @@ public:
 			twin = twin_; next = next_; vertex = vertex_; edge = edge_; face = face_;
 		}
 
+		void set_nvf( HalfedgeRef next_, VertexRef vertex_,  FaceRef face_) {
+			next = next_; vertex = vertex_; face = face_;
+		}
+
+		void set_nf( HalfedgeRef next_,  FaceRef face_) {
+			next = next_; face = face_;
+		}
+
+		void set_te(HalfedgeRef twin_,  EdgeRef edge_) {
+			twin = twin_;  edge = edge_; 
+		}
+
 	private:
 		Halfedge(uint32_t id_) : id(id_) { }
 		friend class Halfedge_Mesh;
@@ -362,6 +374,7 @@ public:
 	EdgeRef emplace_edge(bool sharp = false);
 	FaceRef emplace_face(bool boundary = false);
 	HalfedgeRef emplace_halfedge();
+	HalfedgeRef emplace_fulledge();
 
 	//use erase to delete mesh elements:
 	// immediately clears the connectivity and data,
@@ -371,6 +384,7 @@ public:
 	void erase_edge(EdgeRef e);
 	void erase_face(FaceRef f);
 	void erase_halfedge(HalfedgeRef h);
+	void erase_fulledge(HalfedgeRef h);
 
 	//elements are held in these lists:
 	//Don't add/erase elements from these lists directly!

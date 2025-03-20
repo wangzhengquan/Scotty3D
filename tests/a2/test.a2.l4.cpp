@@ -2,6 +2,7 @@
 #include "geometry/halfedge.h"
 
 #include <set>
+#include <iostream>
 
 static void expect_extrude(Halfedge_Mesh &mesh, Halfedge_Mesh::FaceRef face, Vec3 move, float shrink, Halfedge_Mesh const &after) {
 	size_t numVerts = mesh.vertices.size();
@@ -66,8 +67,10 @@ static void expect_extrude(Halfedge_Mesh &mesh, Halfedge_Mesh::FaceRef face, Vec
 
 		// extract the newly created vertices, check their positions are identical to input vertices
 		std::set<Vec3> new_verts;
+		std::set<Halfedge_Mesh::VertexRef> new_verts_ref;
 		Halfedge_Mesh::VertexRef v = --mesh.vertices.end();
 		for (size_t i = 0; i < old_verts.size(); i++) {
+			new_verts_ref.insert(v);
 			new_verts.insert(v->position);
 			v--;
 		}
@@ -75,7 +78,15 @@ static void expect_extrude(Halfedge_Mesh &mesh, Halfedge_Mesh::FaceRef face, Vec
 			throw Test::error("Bevel face created vertices at incorrect positions!");
 		}
 
+	// std::cout << "\nbefore:" << std::endl;
+	// for (auto v : new_verts_ref){
+	// 	std::cout << v->id << ": "  << v->position << std::endl;
+	// }
 		mesh.extrude_positions(face, move, shrink);
+	// std::cout << "\nafter:" << std::endl;
+	// for (auto v : new_verts_ref){
+	// 	std::cout << v->id << ": "  << v->position << std::endl;
+	// }
 		// check mesh shape:
 		if (auto difference = Test::differs(mesh, after, Test::CheckAllBits)) {
 			throw Test::error("Resulting mesh did not match expected: " + *difference);

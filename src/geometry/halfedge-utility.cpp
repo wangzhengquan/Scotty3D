@@ -112,6 +112,14 @@ Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::emplace_halfedge() {
 	return halfedge;
 }
 
+Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::emplace_fulledge() {
+	HalfedgeRef h = emplace_halfedge();
+	h->set_te(emplace_halfedge(), emplace_edge());
+	h->twin->set_te(h, h->edge);
+	h->edge->halfedge = h;
+	return h;
+}
+
 
 void Halfedge_Mesh::erase_vertex(VertexRef v) {
 	//clear data:
@@ -166,6 +174,12 @@ void Halfedge_Mesh::erase_halfedge(HalfedgeRef h) {
 
 	//move to free list:
 	free_halfedges.splice(free_halfedges.end(), halfedges, h);
+}
+
+void Halfedge_Mesh::erase_fulledge(HalfedgeRef h) {
+	erase_halfedge(h->twin);
+	erase_edge(h->edge);
+	erase_halfedge(h);
 }
 
 

@@ -388,10 +388,57 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
 	//A2L4: Extrude Face
 	// Reminder: This function does not update the vertex positions.
-	// Remember to also fill in extrude_helper (A2L4h)
+	// Remember to also fill in Extrude Positions Helper (A2L4h)
 
-	(void)f;
-    return std::nullopt;
+	// Collect the necessary halfedges and vertices
+	std::vector<HalfedgeRef> face_halfedges;
+	std::vector<VertexRef> face_vertices;
+  auto copyVertex = [&](VertexRef v) -> VertexRef {
+		VertexRef new_v = emplace_vertex();
+		new_v->position = v->position;
+		interpolate_data({v}, new_v); // Copy data from the original vertex
+		return new_v;
+	};
+
+ 
+	HalfedgeRef h = f->halfedge;
+	do {
+		face_halfedges.push_back(h);
+		face_vertices.push_back(h->vertex);
+		h = h->next;
+	} while (h != f->halfedge);
+
+	size_t n = face_halfedges.size();
+	// FaceRef new_f = emplace_face();
+	std::vector<HalfedgeRef> new_halfedges, new_corner_halfedges;
+	
+	std::vector<FaceRef> new_faces;
+	std::vector<VertexRef> new_vertices;
+	
+	// Create new halfedges and vertices
+	for (size_t i = 0; i < n; ++i) {
+		new_halfedges.emplace_back(emplace_fulledge());
+		new_corner_halfedges.emplace_back(emplace_fulledge());
+
+		new_vertices.emplace_back(copyVertex(face_halfedges[i]->vertex));
+		new_faces.emplace_back(emplace_face());
+	}
+
+	for (size_t i = 0; i < n; ++i) {
+		new_halfedges[i]->set_nvf(new_halfedges[(i + 1) % n], new_vertices[i], f);
+		new_halfedges[i]->twin->set_nvf( new_corner_halfedges[i], new_vertices[(i + 1) % n],  new_faces[i]);
+
+		face_halfedges[i]->set_nf(new_corner_halfedges[(i+1)%n]->twin, new_faces[i]);
+
+		new_corner_halfedges[i]->set_nvf( face_halfedges[i], new_vertices[i],  new_faces[i]);
+		new_corner_halfedges[i]->twin->set_nvf( new_halfedges[(i + n - 1) % n]->twin, face_vertices[i],  new_faces[(i + n - 1) % n]);
+
+		new_vertices[i]->halfedge = new_halfedges[i];
+		new_faces[i]->halfedge = face_halfedges[i];
+	}
+
+	f->halfedge = new_halfedges.front();
+	return f;
 }
 
 /*
@@ -491,8 +538,37 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v) {
 	// A2Lx1 (OPTIONAL): Dissolve Vertex
+	std::vector<VertexRef> vertices;
+	std::vector<HalfedgeRef> merged_face_halfedges, erased_halfedges;
+	Halfedge_Mesh::HalfedgeRef he = v->halfedge;
+	Halfedge_Mesh::HalfedgeRef heOrig = he;
+	do {
+		Halfedge_Mesh::HalfedgeRef tempOrig = he;
+		erased_halfedges.push_back(he);
+		he = he->next;
+		do {
+			merged_face_halfedges.push_back(he);
+			vertices.push_back(he->vertex);
+			he = he->next;
+		} while (he->next != tempOrig);
+		he = he->twin;
+	} while (he != heOrig);
 
-    return std::nullopt;
+	size_t n = merged_face_halfedges.size();
+	FaceRef f = emplace_face();
+	f->halfedge = merged_face_halfedges[0];
+	for(size_t i = 0; i < n; i++) {
+		vertices[i]->halfedge = merged_face_halfedges[i];
+		merged_face_halfedges[i]->set_nf(merged_face_halfedges[(i + 1) % n], f);
+	}
+
+	for(HalfedgeRef he : erased_halfedges) {
+		erase_face(he->face);
+		erase_fulledge(he);
+	}
+	erase_vertex(v);
+
+	return f;
 }
 
 /*
@@ -604,9 +680,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 				he->twin->edge = he->edge;
 				he->twin->twin = he;
 				
-				halfedgesMap.emplace(line, he);
-
-				
+				halfedgesMap.insert_or_assign(line, he);
 			} else if (he->face == f1) {
 				facesToErase.emplace(f1);
 				halfedgesToErase.emplace(colineHe->second->twin);
@@ -747,8 +821,20 @@ void Halfedge_Mesh::extrude_positions(FaceRef face, Vec3 move, float shrink) {
 
 	//General strategy:
 	// use mesh navigation to get starting positions from the surrounding faces,
-	// compute the centroid from these positions + use to shrink,
-	// offset by move
+	// compute the centroid from these positions + use to shrink, offset by move
+
+	// Compute the centroid of the face
+	// Vec3 centroid = face->center();
+	// Vec3 normal = face->normal();
+
+	HalfedgeRef h = face->halfedge;
+	do {
+			h->vertex->position += move; // Move along the normal
+			h->vertex->position *= (1.0f - shrink); // Shrink toward the centroid
+			h = h->next;
+	} while (h != face->halfedge);
+
+	 
 	
 }
 
