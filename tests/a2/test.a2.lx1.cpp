@@ -66,44 +66,7 @@ static void expect_erase(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef vertex, H
 		throw Test::error("Erase vertex rejected operation!");
 	}
 }
-
-/*
-BASIC CASE
-
-Initial mesh:
-1---3
-|\ /|
-| 4 |
-|/ \|
-0---2
-
-Dissolve Vertex on Vertex: 4
-*/
-Test test_a2_lx1_dissolve_vertex_basic_tris("a2.lx1.dissolve_vertex.basic.tris", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
-        Vec3{-0.5f, 0.0f, -0.5f},   Vec3{-0.5f, 0.0f, 0.5f},
-        Vec3{0.5f, 0.0f, -0.5f},    Vec3{0.5f, 0.0f, 0.5f},
-        Vec3{0.0f, 0.0f, 0.0f}
-	}, {
-		{3, 2, 4}, 
-        {0, 1, 4}, 
-        {2, 0, 4}, 
-        {1, 3, 4}
-	});
-	
-    Halfedge_Mesh::VertexRef vertex = mesh.vertices.begin();
-	std::advance(vertex, 4);
-
-	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
-		Vec3{-0.5f, 0.0f, -0.5f},   Vec3{-0.5f, 0.0f, 0.5f},
-        Vec3{0.5f, 0.0f, -0.5f},    Vec3{0.5f, 0.0f, 0.5f}
-	}, {
-		{2, 0, 1, 3}
-	});
-
-	expect_erase(mesh, vertex, after);
-});
-
+ 
 
 
 /*
@@ -116,9 +79,9 @@ Initial mesh:
 |/ \|
 3---4
 
-Dissolve Vertex on Vertex: 4
+Dissolve Vertex on Vertex: 2
 */
-Test test_a2_lx1_dissolve_vertex_basic_tris2("a2.lx1.dissolve_vertex.basic.tris2", []() {
+Test test_a2_lx1_dissolve_vertex_basic_tris("a2.lx1.dissolve_vertex.basic.tris", []() {
 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
 		Vec3{-0.5f, 0.5f, 0.0f}, Vec3{0.5f, 0.5f, 0.0f},
 									Vec3{0.0f, 0.0f, 0.0f},
@@ -145,6 +108,40 @@ Test test_a2_lx1_dissolve_vertex_basic_tris2("a2.lx1.dissolve_vertex.basic.tris2
 });
 
 /*
+0--1\            0--1\                
+|\ | \           |    \               
+| \2--3    ->    |     2          
+|  | /           |    /                                                   
+4--5/            3--4/        
+*/
+Test test_a2_lx1_dissolve_vertex_basic_tris2("a2.lx1.dissolve_vertex.basic.tris2", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 4, 5, 2}, 
+		{1, 2, 3}, 
+		{2, 5, 3}
+	});
+
+	Halfedge_Mesh::VertexRef vertex = mesh.vertices.begin();
+	std::advance(vertex, 2);
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                             Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 3, 4, 2, 1}, 
+	});
+
+	expect_erase(mesh, vertex, after);
+});
+
+
+/*
 EDGE CASE
 
 Initial mesh:
@@ -168,4 +165,40 @@ Test test_a2_lx1_dissolve_vertex_edge_boundary("a2.lx1.dissolve_vertex.edge.boun
 	if (mesh.dissolve_vertex(vertex)) {
 		throw Test::error("EDGE CASE: Did not reject erasing a boundary vertex!");
 	}
+});
+
+
+/*
+0--1\            0---\               
+|\ | \           |\   \              
+| \2--3    ->    | \1--2         
+|  | /           |  | /                                                  
+4--5/            3--4/       
+*/
+Test test_a2_lx1_dissolve_vertex_edge_boundary2("a2.lx1.dissolve_vertex.edge.boundary2", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 4, 5, 2}, 
+		{1, 2, 3}, 
+		{2, 5, 3}
+	});
+
+	Halfedge_Mesh::VertexRef vertex = mesh.vertices.begin();
+	std::advance(vertex, 1);
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f),  
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 1, 2}, 
+		{0, 3, 4, 1}, 
+		{1, 4, 2}
+	});
+
+	expect_erase(mesh, vertex, after);
 });

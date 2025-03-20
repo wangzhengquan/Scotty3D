@@ -542,6 +542,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v
 	std::vector<HalfedgeRef> merged_face_halfedges, erased_halfedges;
 	Halfedge_Mesh::HalfedgeRef he = v->halfedge;
 	Halfedge_Mesh::HalfedgeRef heOrig = he;
+
 	do {
 		Halfedge_Mesh::HalfedgeRef tempOrig = he;
 		erased_halfedges.push_back(he);
@@ -554,7 +555,12 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v
 		he = he->twin;
 	} while (he != heOrig);
 
+	if(erased_halfedges.size() < 3) {
+		return std::nullopt;
+	}
+
 	size_t n = merged_face_halfedges.size();
+	
 	FaceRef f = emplace_face();
 	f->halfedge = merged_face_halfedges[0];
 	for(size_t i = 0; i < n; i++) {
