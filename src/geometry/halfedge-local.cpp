@@ -538,20 +538,38 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v) {
 	// A2Lx1 (OPTIONAL): Dissolve Vertex
-	std::vector<VertexRef> vertices;
+	// std::vector<VertexRef> vertices;
 	std::vector<HalfedgeRef> merged_face_halfedges, erased_halfedges;
 	Halfedge_Mesh::HalfedgeRef he = v->halfedge;
-	Halfedge_Mesh::HalfedgeRef heOrig = he;
+	Halfedge_Mesh::HalfedgeRef heOrig = he, pre;
 
 	do {
 		Halfedge_Mesh::HalfedgeRef tempOrig = he;
 		erased_halfedges.push_back(he);
+		
+		pre = he;
 		he = he->next;
 		do {
-			merged_face_halfedges.push_back(he);
-			vertices.push_back(he->vertex);
+			if(!tempOrig->face->boundary) {
+				merged_face_halfedges.push_back(he);
+				// vertices.push_back(he->vertex);
+			}
+			pre = he;
 			he = he->next;
 		} while (he->next != tempOrig);
+		if(tempOrig->face->boundary) {
+			HalfedgeRef newh = emplace_fulledge();
+			HalfedgeRef newt= newh->twin;
+			newh->vertex = tempOrig->twin->vertex;
+			newt->set_nvf(tempOrig->next, he->vertex, tempOrig->face);
+			// newt->next = tempOrig->next;
+			// newt->face= tempOrig->face;
+			// newt->vertex = he->vertex;
+			pre->next = newt;
+			newt->face->halfedge = newt;
+			
+			merged_face_halfedges.push_back(newh);
+		}
 		he = he->twin;
 	} while (he != heOrig);
 
@@ -564,12 +582,15 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v
 	FaceRef f = emplace_face();
 	f->halfedge = merged_face_halfedges[0];
 	for(size_t i = 0; i < n; i++) {
-		vertices[i]->halfedge = merged_face_halfedges[i];
+		merged_face_halfedges[i]->vertex->halfedge = merged_face_halfedges[i];
+		merged_face_halfedges[i]->twin->vertex->halfedge = merged_face_halfedges[i]->twin;
 		merged_face_halfedges[i]->set_nf(merged_face_halfedges[(i + 1) % n], f);
 	}
 
 	for(HalfedgeRef he : erased_halfedges) {
-		erase_face(he->face);
+		if(!he->face->boundary) {
+			erase_face(he->face);
+		}
 		erase_fulledge(he);
 	}
 	erase_vertex(v);

@@ -67,6 +67,21 @@ static void expect_erase(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef vertex, H
 	}
 }
  
+static void expect_erase_boundry(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef vertex, Halfedge_Mesh const &after) {
+
+	if (auto ret = mesh.dissolve_vertex(vertex)) {
+		if (auto msg = mesh.validate()) {
+			throw Test::error("Invalid mesh: " + msg.value().second);
+		}
+		 
+		// check mesh shape:
+    if (auto diff = Test::differs(mesh, after)) {
+		  throw Test::error("Result does not match expected: " + diff.value());
+	  }
+	} else {
+		throw Test::error("Erase vertex rejected operation!");
+	}
+}
 
 
 /*
@@ -200,5 +215,5 @@ Test test_a2_lx1_dissolve_vertex_edge_boundary2("a2.lx1.dissolve_vertex.edge.bou
 		{1, 4, 2}
 	});
 
-	expect_erase(mesh, vertex, after);
+	expect_erase_boundry(mesh, vertex, after);
 });
