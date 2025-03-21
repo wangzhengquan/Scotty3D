@@ -4,33 +4,33 @@
 #include <set>
 
 static void expect_collapse(Halfedge_Mesh& mesh, Halfedge_Mesh::FaceRef face, Halfedge_Mesh const &after) {
+  size_t numVerts = mesh.vertices.size();
 
-	size_t numVerts = mesh.vertices.size();
-	size_t numEdges = mesh.edges.size();
-	size_t numFaces = mesh.faces.size();
-	size_t faceDeg = face->degree();
+  size_t numEdges = mesh.edges.size();
+  size_t numFaces = mesh.faces.size();
+  size_t faceDeg = face->degree();
 
-	if (auto ret = mesh.collapse_face(face)) {
-		if (auto msg = mesh.validate()) {
-			throw Test::error("Invalid mesh: " + msg.value().second);
-		}
-		// check for expected number of elements
-		if (numVerts - faceDeg + 1 != mesh.vertices.size()) {
-			throw Test::error("Some vertices were not erased!");
-		}
-		if (numEdges <= mesh.edges.size()) {
-			throw Test::error("Some edges were not erased!");
-		}
-		if (numFaces <= mesh.faces.size()) {
-			throw Test::error("Collapse face did not erase a face!");
-		}
-		// check mesh shape:
-        if (auto diff = Test::differs(mesh, after)) {
-		    throw Test::error("Result does not match expected: " + diff.value());
-	    }
-	} else {
-		throw Test::error("Collapse face rejected operation!");
-	}
+  if (auto ret = mesh.collapse_face(face)) {
+    if (auto msg = mesh.validate()) {
+        throw Test::error("Invalid mesh: " + msg.value().second);
+    }
+    // check for expected number of elements
+    if (numVerts - faceDeg + 1 != mesh.vertices.size()) {
+        throw Test::error("Some vertices were not erased!");
+    }
+    if (numEdges <= mesh.edges.size()) {
+        throw Test::error("Some edges were not erased!");
+    }
+    if (numFaces <= mesh.faces.size()) {
+        throw Test::error("Collapse face did not erase a face!");
+    }
+    // check mesh shape:
+    if (auto diff = Test::differs(mesh, after)) {
+        throw Test::error("Result does not match expected: " + diff.value());
+    }
+  } else {
+        throw Test::error("Collapse face rejected operation!");
+  }
 }
 
 /*
@@ -58,7 +58,7 @@ Initial mesh:
 Collapse Face on Face: 3-0-1-2
 */
 Test test_a2_lx3_collapse_face_basic_planar("a2.lx3.collapse_face.basic.planar", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+    Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
         Vec3{0.25f, 0.0f, 0.25f},   Vec3{0.25f, 0.0f, 0.0f},
         Vec3{0.0f, 0.0f, 0.0f},     Vec3{0.0f, 0.0f, 0.25f},
         Vec3{0.0f, 0.0f, 0.5f},     Vec3{0.25f, 0.0f, 0.5f},
@@ -72,7 +72,7 @@ Test test_a2_lx3_collapse_face_basic_planar("a2.lx3.collapse_face.basic.planar",
         Vec3{-0.5f, 0.0f, 0.0f},    Vec3{-0.25f, 0.0f, 0.25f},
         Vec3{-0.5f, 0.0f, 0.25f},   Vec3{-0.5f, 0.0f, 0.5f},
         Vec3{-0.25f, 0.0f, 0.5f}
-	}, {
+    }, {
         {3, 0, 1, 2},
         {5, 0, 3, 4},
         {7, 0, 5, 6},
@@ -89,11 +89,11 @@ Test test_a2_lx3_collapse_face_basic_planar("a2.lx3.collapse_face.basic.planar",
         {22, 21, 16, 20},
         {24, 21, 22, 23},
         {3, 21, 24, 4}
-	});
+    });
 
     Halfedge_Mesh::FaceRef face = mesh.faces.begin();
 
-	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+    Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
         Vec3{0.125f, 0.0f, 0.125f}, Vec3{0.0f, 0.0f, 0.5f},
         Vec3{0.25f, 0.0f, 0.5f},    Vec3{0.5f, 0.0f, 0.5f},
         Vec3{0.5f, 0.0f, 0.25f},    Vec3{0.5f, 0.0f, 0.0f},
@@ -123,6 +123,63 @@ Test test_a2_lx3_collapse_face_basic_planar("a2.lx3.collapse_face.basic.planar",
         {0, 18, 21, 1}
 	});
 
+  expect_collapse(mesh, face, after);
+});
+
+/*
+BASIC CASE
+
+Initial mesh:
+0-----1\
+|\   /| \
+| 2-3 |  \
+| | | |   4
+| 5-6 |  /
+|/   \| /
+7-----8/
+
+
+Collapse face: 2-5-6-3,  
+
+After mesh:
+0-------1\
+|\     /| \
+| \   / |  \
+|   2   |   3
+| /   \ |  /
+|/     \| /
+4-------5/
+*/
+Test test_a2_lx3_collapse_face_basic_planar2("a2.lx3.collapse_face.basic.planar2", []() {
+        Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.0f, 0.0f),           Vec3(1.0f, 1.0f, 0.0f),
+		      Vec3(-0.5f, 0.5f, 0.0f),  Vec3(0.5f, 0.5f, 0.0f),
+		                                                                Vec3(2.0f, 0.0f, 0.0f),
+		      Vec3(-0.5f,-0.5f, 0.0f),  Vec3(0.5f,-0.5f, 0.0f),
+		Vec3(-1.0f,-1.0f, 0.0f),           Vec3(1.0f, -1.0f, 0.0f)
+	}, {
+                {2, 5, 6, 3}, 
+		{0, 2, 3, 1}, 
+		{0, 7, 5, 2}, 
+		{3, 6, 8, 1}, 
+		{5, 7, 8, 6}, 
+		{1, 8, 4}
+	});
+	
+	Halfedge_Mesh::FaceRef face = mesh.faces.begin();
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f),
+		         Vec3(0.0f, 0.0f, 0.0f),               Vec3(2.0f, 0.0f, 0.0f),
+		Vec3(-1.0f,-1.0f, 0.0f), Vec3(1.0f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 4, 2},
+                {2, 4, 5},
+                {2, 5, 1},
+                {1, 5, 3},
+	});
+
 	expect_collapse(mesh, face, after);
 });
 
@@ -139,19 +196,19 @@ Initial mesh:
 Collapse Face on Face: BOUNDARY
 */
 Test test_a2_lx3_collapse_face_edge_boundary("a2.lx3.collapse_face.edge.boundary", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+    Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
         Vec3{0, 0, 0}, Vec3{1, 0, 0}, 
         Vec3{0, 1, 0}, Vec3{1, 1, 0}
 	}, {
         {0, 1, 3, 2}
-	});
+    });
 
-	Halfedge_Mesh::FaceRef face = mesh.faces.begin();
-	std::advance(face, 1);
+    Halfedge_Mesh::FaceRef face = mesh.faces.begin();
+    std::advance(face, 1);
 
-	//TODO: Hmmmmmm collapsing a boundary face should maybe be okay.
+    //TODO: Hmmmmmm collapsing a boundary face should maybe be okay.
     //      Not sure what that would result in?
-	if (mesh.collapse_face(face)) {
-		throw Test::error("EDGE CASE: Did not reject collapsing a boundary face!");
-	}
+    if (mesh.collapse_face(face)) {
+	throw Test::error("EDGE CASE: Did not reject collapsing a boundary face!");
+    }
 });
