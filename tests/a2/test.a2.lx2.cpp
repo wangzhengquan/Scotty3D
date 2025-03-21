@@ -58,9 +58,9 @@ static void expect_erase(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, Halfe
 			throw Test::error("Erase edge did not erase a face!");
 		}
 		// check mesh shape:
-        if (auto diff = Test::differs(mesh, after)) {
-		    throw Test::error("Result does not match expected: " + diff.value());
-	    }
+		if (auto diff = Test::differs(mesh, after)) {
+			throw Test::error("Result does not match expected: " + diff.value());
+		}
 	} else {
 		throw Test::error("Erase edge rejected operation!");
 	}
@@ -84,10 +84,10 @@ Test test_a2_lx2_dissolve_edge_basic_tri_tri("a2.lx2.dissolve_edge.basic.tri_tri
         Vec3{0, 1, 0}, Vec3{1, 1, 0}
 	}, {
 		{0, 1, 2}, 
-        {2, 1, 3}
+    {2, 1, 3}
 	});
 	
-    Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->edge;
+  Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->edge;
 
 	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
         Vec3{0, 0, 0}, Vec3{1, 0, 0}, 
@@ -125,3 +125,72 @@ Test test_a2_lx2_dissolve_edge_edge_boundary("a2.lx2.dissolve_edge.edge.boundary
 		throw Test::error("EDGE CASE: Did not reject erasing a boundary edge!");
 	}
 });
+
+/*
+0---1       0
+|\  |       |\  
+| \ |   ->  | \ 
+|  \|       |  \
+2---3       1---2
+
+Dissolve Edge on Edge: 0-1
+*/
+Test test_a2_lx2_dissolve_edge_edge_boundary2("a2.lx2.dissolve_edge.edge.boundary2", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+			Vec3{0, 1, 0}, Vec3{1, 1, 0},
+			Vec3{0, 0, 0}, Vec3{1, 0, 0}, 
+	}, {
+		{0, 3, 1}, 
+    {0, 2, 3}
+	});
+	
+  Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->edge;
+	std::advance(edge, 2);
+	// if (mesh.dissolve_edge(edge)) {
+	// 	throw Test::error("EDGE CASE: Did not reject erasing a boundary edge!");
+	// }
+	// Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+  //     Vec3{0, 1, 0},  
+	// 		Vec3{0, 0, 0}, Vec3{1, 0, 0}, 
+	// }, {
+	// 	{0, 1, 2}
+	// });
+
+	// expect_erase(mesh, edge, after);
+});
+
+/*
+0--1\           						0  1\                 
+|\ | \      dissolve(0-1)   |\ | \                
+| \2--3         ->          | \2--3         
+|  | /                      |  | /                                                    
+4--5/                       4--5/         
+*/
+Test test_a2_lx2_dissolve_edge_edge_boundary3("a2.lx2.dissolve_edge.edge.boundary3", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 4, 5, 2}, 
+		{1, 2, 3}, 
+		{2, 5, 3}
+	});
+
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->edge;
+	std::advance(edge, 2);
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 4, 5, 2}, 
+		{1, 2, 3}, 
+		{2, 5, 3}
+	});
+
+	expect_erase(mesh, edge, after);
+});
+
