@@ -1,12 +1,14 @@
 #include "test.h"
 #include "geometry/halfedge.h"
-
+#include <iostream>
 #include <set>
 
 static void expect_bevel_vertex(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef vertex, Vec3 dir, float dist, Halfedge_Mesh const &after) {
 	size_t numVerts = mesh.vertices.size();
 	size_t numEdges = mesh.edges.size();
 	size_t numFaces = mesh.faces.size();
+
+	// std::cout << "\nbefore:\n" << mesh.describe() << std::endl;
 
 	std::set<Vec3> old_verts;
 	old_verts.insert(vertex->position);
@@ -29,7 +31,7 @@ static void expect_bevel_vertex(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef ve
 
 	if (auto ret = mesh.bevel_vertex(vertex)) {
 		Halfedge_Mesh::FaceRef face = ret.value();
-        if (auto msg = mesh.validate()) {
+    if (auto msg = mesh.validate()) {
 			throw Test::error("Invalid mesh: " + msg.value().second);
 		}
 
@@ -54,9 +56,9 @@ static void expect_bevel_vertex(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef ve
 		std::set<Halfedge_Mesh::VertexRef> new_vert_ref;
 		Halfedge_Mesh::HalfedgeRef face_he = face->halfedge;
 		Halfedge_Mesh::HalfedgeRef face_he_orig = face_he;
-        std::vector<Vec3> start_positions;
+    std::vector<Vec3> start_positions;
 		do {
-            start_positions.push_back(face_he->vertex->position);
+      start_positions.push_back(face_he->vertex->position);
 			new_verts.insert(face_he->vertex->position);
 			new_vert_ref.insert(face_he->vertex);
 			face_he = face_he->next;
@@ -67,7 +69,7 @@ static void expect_bevel_vertex(Halfedge_Mesh& mesh, Halfedge_Mesh::VertexRef ve
 		}
 
 		mesh.bevel_positions(face, start_positions, dir, dist);
-
+		// std::cout << "\nafter:\n" << mesh.describe() << std::endl;
 		// check mesh shape:
 		if (auto difference = Test::differs(mesh, after, Test::CheckAllBits)) {
 			throw Test::error("Resulting mesh did not match expected: " + *difference);
@@ -86,12 +88,13 @@ Initial mesh: Non-triangulated cube
 Bevel Vertex on Vertex: 7 - Vec3{1.0f, 1.0f, 1.0f}, move in direction of corner normal for a distance of 0.5
 */
 Test test_a2_lx5_bevel_vertex_basic_cube("a2.lx5.bevel_vertex.basic.cube", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+	std::vector<Vec3> vertices {
         Vec3{-1.0f, 1.0f, 1.0f},    Vec3{-1.0f, 1.0f, -1.0f},
         Vec3{-1.0f, -1.0f, -1.0f},  Vec3{-1.0f, -1.0f, 1.0f},
         Vec3{1.0f, -1.0f, -1.0f},   Vec3{1.0f, -1.0f, 1.0f},
         Vec3{1.0f, 1.0f, -1.0f},    Vec3{1.0f, 1.0f, 1.0f}
-	}, {
+	};
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces(vertices, {
         {3, 0, 1, 2}, 
         {5, 3, 2, 4}, 
         {7, 5, 4, 6}, 
@@ -102,14 +105,16 @@ Test test_a2_lx5_bevel_vertex_basic_cube("a2.lx5.bevel_vertex.basic.cube", []() 
 
 	Halfedge_Mesh::VertexRef vertex = mesh.vertices.begin();
 	std::advance(vertex, 7);
+// std::cout << "\nvertex:" << vertex->position << std::endl;
 
-	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
-        Vec3{-1.0f, 1.0f, 1.0f},    Vec3{-1.0f, 1.0f, -1.0f}, 
-        Vec3{-1.0f, -1.0f, -1.0f},  Vec3{-1.0f, -1.0f, 1.0f}, 
-        Vec3{1.0f, -1.0f, -1.0f},   Vec3{1.0f, -1.0f, 1.0f}, 
-        Vec3{1.0f, 1.0f, -1.0f},    Vec3{1.0f, 1.0f, 1.86603f}, 
-        Vec3{1.0f, 1.86603f, 1.0f}, Vec3{1.86603f, 1.0f, 1.0f}
-	}, {
+	std::vector<Vec3> aflter_vertices{
+		Vec3{-1.0f, 1.0f, 1.0f},    Vec3{-1.0f, 1.0f, -1.0f}, 
+		Vec3{-1.0f, -1.0f, -1.0f},  Vec3{-1.0f, -1.0f, 1.0f}, 
+		Vec3{1.0f, -1.0f, -1.0f},   Vec3{1.0f, -1.0f, 1.0f}, 
+		Vec3{1.0f, 1.0f, -1.0f},    Vec3{1.0f, 1.0f, 1.86603f}, 
+		Vec3{1.0f, 1.86603f, 1.0f}, Vec3{1.86603f, 1.0f, 1.0f}
+	};
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces(aflter_vertices, {
         {3, 0, 1, 2},
         {5, 3, 2, 4},
         {7, 8, 5, 4, 6},
@@ -142,26 +147,35 @@ After mesh:
 0---2
 */
 Test test_a2_lx5_bevel_vertex_edge_boundary("a2.lx5.bevel_vertex.edge.boundary", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+	std::vector<Vec3> vertices {
         Vec3{-0.5f, 0.0f, -0.5f},   Vec3{-0.5f, 0.0f, 0.5f},
         Vec3{0.5f, 0.0f, -0.5f},    Vec3{0.5f, 0.0f, 0.5f}
-	}, {
+	};
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces(vertices, {
         {2, 0, 1}, 
         {3, 2, 1}
 	});
 
 	Halfedge_Mesh::VertexRef vertex = mesh.vertices.begin();
 	std::advance(vertex, 1);
-
-	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+// std::cout << "\nvertex:" << vertex->position << std::endl;
+	std::vector< Vec3 > after_vertices{
         Vec3{-0.5f, 0.0f, -0.5f},   Vec3{-0.5f, 0.0f, 0.25f}, 
         Vec3{0.5f, 0.0f, -0.5f},    Vec3{0.5f, 0.0f, 0.5f}, 
         Vec3{-0.25f, 0.0f, 0.25f},  Vec3{-0.25f, 0.0f, 0.5f}
-	}, {
+	};
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces(after_vertices, {
         {1, 4, 2, 0},
         {4, 5, 3, 2},
         {4, 1, 5}
 	});
+	// std::cout << "1-0:" << (vertices[0] - vertices[1]) << std::endl;
+	// std::cout << "1-2:" << (vertices[2] - vertices[1]) << std::endl;
+	// std::cout << "1-3:" << (vertices[3] - vertices[1]) << std::endl;
+	// std::cout << "1:" << after_vertices[1] << std::endl;
+	// std::cout << "4:" << after_vertices[4] << std::endl;
+	// std::cout << "5:" << after_vertices[5] << std::endl;
+	
 
 	expect_bevel_vertex(mesh, vertex, Vec3(0.0f, 1.0f, 0.0f), 0.25f, after);
 });

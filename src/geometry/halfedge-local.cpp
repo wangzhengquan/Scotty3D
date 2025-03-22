@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <functional>
 #include <iostream>
+#include <algorithm>
 
 /******************************************************************
 *********************** Local Operations **************************
@@ -384,10 +385,59 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 	//A2Lx5 (OPTIONAL): Bevel Vertex
 	// Reminder: This function does not update the vertex positions.
 	// Remember to also fill in bevel_vertex_helper (A2Lx5h)
+	
+	// Collect the necessary halfedges around the vertex
+	std::vector<HalfedgeRef> vertex_halfedges;
+	HalfedgeRef h = v->halfedge;
+	do {
+			vertex_halfedges.push_back(h);
+			h = h->twin->next;
+	} while (h != v->halfedge);
 
-	(void)v;
-    return std::nullopt;
+
+	size_t sides = vertex_halfedges.size();
+	// Create new vertices for each outgoing edge
+	std::vector<VertexRef> new_vertices;
+	for (size_t s = 0; s < sides; ++s) {
+			VertexRef new_v = emplace_vertex();
+			new_v->position = v->position;
+			interpolate_data({v}, new_v); // Copy data from the original vertex
+			new_vertices.push_back(new_v);
+	}
+
+	// Create new edges and faces
+	std::vector<HalfedgeRef> new_halfedges;
+	FaceRef new_face = emplace_face();
+	for (size_t s = 0; s < sides; ++s) {
+			VertexRef a = new_vertices[s];
+			VertexRef b = new_vertices[(s - 1 + sides) % sides];
+			HalfedgeRef he = vertex_halfedges[s];
+			HalfedgeRef new_he = emplace_fulledge();
+			he->vertex = a;
+			a->halfedge = he;
+			new_he->vertex = a;
+			new_he->face = new_face;
+			new_he->twin->vertex = b;
+			new_he->twin->face = he->face; 
+			new_halfedges.push_back(new_he);
+			
+	}
+
+	for (size_t s = 0; s < sides; ++s) {
+		new_halfedges[(s + 1) % sides]->next = new_halfedges[s];
+		new_halfedges[s]->twin->next = vertex_halfedges[s];
+		vertex_halfedges[s]->twin->next = new_halfedges[(s + 1) % sides]->twin;
+	}
+	// Update the halfedge pointer for the new face
+	new_face->halfedge = new_halfedges.front();
+	// Remove the original vertex
+	erase_vertex(v);
+
+	// Return the newly created face
+	return new_face;
 }
+
+
 
 /*
  * bevel_edge: creates a face in place of an edge
@@ -907,13 +957,39 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeR
  *
  * see also [BEVEL NOTE] above.
  */
+ 
 void Halfedge_Mesh::bevel_positions(FaceRef face, std::vector<Vec3> const &start_positions, Vec3 direction, float distance) {
 	//A2Lx5h / A2Lx6h (OPTIONAL): Bevel Positions Helper
 	
 	// The basic strategy here is to loop over the list of outgoing halfedges,
 	// and use the preceding and next vertex position from the original mesh
 	// (in the start_positions array) to compute an new vertex position.
+	// Adjust the positions of the vertices in the beveled face
 	
+	// std::cout << "\nstart_positions: " ;
+	// for(const Vec3 & p: start_positions) {
+	// 	std::cout << p << ",";
+	// }
+	// std::cout << "\ndirection: " << direction;
+	// std::cout << "\ndistance: " << distance << std::endl;
+
+	HalfedgeRef h = face->halfedge;
+	size_t i = 0;
+	do {
+			VertexRef v = h->vertex;
+			VertexRef vout = v->halfedge->next->vertex;
+			Vec3 outgoing = vout->position - v->position;
+			float projection = dot(outgoing, direction);
+			projection = projection == 0 ? 1 : projection;
+			float rate =  distance / projection;
+			// float rate = std::clamp( distance / dot(outgoing, direction), 0.0f, 1.0f);
+// std::cout << "rate:" << rate <<  std::endl;
+// std::cout << "outgoing: "<< vout->id << ":" << vout->position << " - " <<v->id << ":" << v->position << "=" << outgoing << std::endl;
+			v->position = start_positions[i] +  rate * outgoing ;
+// std::cout << "v->position: " << v->position << std::endl;
+			h = h->next;
+			++i;
+	} while (h != face->halfedge);
 }
 
 /*
