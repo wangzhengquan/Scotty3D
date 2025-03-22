@@ -314,9 +314,38 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(EdgeRef e) {
  */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::inset_vertex(FaceRef f) {
 	// A2Lx4 (OPTIONAL): inset vertex
-	
-	(void)f;
-    return std::nullopt;
+	if (f->boundary) return std::nullopt;
+	std::vector<HalfedgeRef> halfedges;
+	std::vector<VertexRef> vertices;
+	std::vector<VertexCRef> vertices_c;
+	std::vector<HalfedgeRef> new_halfedges;
+	std::vector<FaceRef> new_faces;
+	HalfedgeRef h = f->halfedge;
+	do {
+		halfedges.push_back(h);
+		vertices.push_back(h->vertex);
+		vertices_c.push_back(h->vertex);
+		new_halfedges.push_back(emplace_fulledge());
+		new_faces.push_back(emplace_face());
+		h = h->next;
+	} while(h !=f->halfedge);
+
+	VertexRef vm = emplace_vertex();
+	vm->position = f->center();
+	interpolate_data(vertices_c, vm);
+
+	size_t n = halfedges.size();
+	for (size_t i = 0; i < n; i++) {
+		if(i == 0) {
+			vm->halfedge = new_halfedges[i]->twin;
+		}
+		new_halfedges[i]->set_nvf(new_halfedges[(i + n - 1) % n]->twin, vertices[i], new_faces[(i + n - 1) % n]);
+		new_halfedges[i]->twin->set_nvf(halfedges[i], vm, new_faces[i]);
+		halfedges[i]->set_nf(new_halfedges[(i + 1) % n], new_faces[i]);
+		new_faces[i]->halfedge = new_halfedges[i]->twin;
+	}
+	erase_face(f);
+	return vm;
 }
 
 
