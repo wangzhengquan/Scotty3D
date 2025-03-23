@@ -38,7 +38,7 @@ static void expect_bevel_edge(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, 
 	old_vert_connect.erase(edge->halfedge->twin->vertex->id);
 
 	if (auto ret = mesh.bevel_edge(edge)) {
-        Halfedge_Mesh::FaceRef face = ret.value();
+    Halfedge_Mesh::FaceRef face = ret.value();
 		if (auto msg = mesh.validate()) {
 			throw Test::error("Invalid mesh: " + msg.value().second);
 		}
@@ -64,9 +64,9 @@ static void expect_bevel_edge(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, 
 		std::set<Halfedge_Mesh::VertexRef> new_vert_ref;
 		Halfedge_Mesh::HalfedgeRef face_he = face->halfedge;
 		Halfedge_Mesh::HalfedgeRef face_he_orig = face_he;
-        std::vector<Vec3> start_positions;
+    std::vector<Vec3> start_positions;
 		do {
-            start_positions.push_back(face_he->vertex->position);
+      start_positions.push_back(face_he->vertex->position);
 			new_verts.insert(face_he->vertex->position);
 			new_vert_ref.insert(face_he->vertex);
 			face_he = face_he->next;
@@ -76,7 +76,7 @@ static void expect_bevel_edge(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, 
 			throw Test::error("Bevel edge created vertices at incorrect positions!");
 		}
 		
-        mesh.bevel_positions(face, start_positions, dir, dist);
+    mesh.bevel_positions(face, start_positions, dir, dist);
 
         // check mesh shape:
 		if (auto difference = Test::differs(mesh, after, Test::CheckAllBits)) {
