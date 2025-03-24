@@ -646,6 +646,7 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	return e;
 }
 
+ 
 
 /*
  * make_boundary: add non-boundary face to boundary
@@ -664,7 +665,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 			return std::nullopt; // Can't make a boundary face into a boundary face
 	}
 	
-	
 	FaceRef orig_boundary_face = faces.end();
 	std::vector<HalfedgeRef> halfedges;
 	std::vector<HalfedgeRef> special_halfedges;
@@ -673,7 +673,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 	std::vector<VertexRef> erased_vertices;
 	HalfedgeRef h = face->halfedge;
 	HalfedgeRef hOrig = h;
-	size_t count = 0;
+	size_t holes = 0;
 	do {
 		halfedges.push_back(h);
 		bool isCurrentBoundary = h->twin->face->boundary;
@@ -687,7 +687,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 		bool isNextBoundary = h->next->twin->face->boundary;
 		if( isNextBoundary != isCurrentBoundary) {
 			if (isCurrentBoundary) {
-				count++;
+				holes++;
 				special_halfedges.push_back(h->twin);
 			} else {
 				special_halfedges.push_back(h->next);
@@ -700,11 +700,12 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 
 	for (size_t i = 0 ; i< special_halfedges.size(); i++) {
 		auto he = special_halfedges[i];
-		auto h_next = he->twin->next;
-		auto h_pre = he;
-		for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);
-		h_pre->twin->next = h_next;
-		he->vertex->halfedge = h_next;
+		// auto h_next = he->twin->next;
+		// auto h_pre = he;
+		// for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);
+		// h_pre->twin->next = h_next;
+		auto h_next = reconnect_after_erase_edge(he);
+		
 		if(i == 0) {
 			face->halfedge = h_next;
 		} else if(i == 2) {
@@ -723,7 +724,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 	
 	face->boundary = true;
 	setFace(face);
-	if(count < 2) {
+	if(holes < 2) {
 		erase_face(orig_boundary_face);
 		for (auto v : erased_vertices) {
 			erase_vertex(v);

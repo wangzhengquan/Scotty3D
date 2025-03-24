@@ -113,15 +113,6 @@ public:
 	//turn a non-boundary face into a boundary face
 	std::optional<FaceRef> make_boundary(FaceRef f);
 
-	HalfedgeRef prev(HalfedgeRef _h) {
-		HalfedgeRef h = _h;
-		while(h->next != _h) {
-			h = h->next;
-		}
-		return h;
-	} 
-
-
 	//--- unification ---
 
 	//merge non-boundary faces incident to a given vertex, return the resulting face
@@ -497,7 +488,22 @@ public:
 	static ElementCRef const_from(ElementRef elem);
 
 private:
+	HalfedgeRef prev(HalfedgeRef _h) {
+		HalfedgeRef h = _h;
+		while(h->next != _h) {
+			h = h->next;
+		}
+		return h;
+	} 
 	
+	HalfedgeRef reconnect_after_erase_edge(HalfedgeRef he) {
+		auto h_next = he->twin->next;
+		auto h_pre = he;
+		for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);
+		h_pre->twin->next = h_next;
+		he->vertex->halfedge = h_next;
+		return h_next;
+	}
 	//a fresh element id; assigned + incremented by emplace_*() functions:
 	uint32_t next_edge_id = 0;
 	uint32_t next_halfedge_id = 0;
