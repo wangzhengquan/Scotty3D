@@ -496,6 +496,11 @@ private:
 		return h;
 	} 
 
+	/**
+	 * @brief Reconnects the halfedges after erasing a halfedge and keep its vertex.
+	 * this is helpful when we want to erase an edge and make the faces shared this edge merge into on face.
+	 * 
+	 */
 	HalfedgeRef reconnect_after_erase_halfedge(HalfedgeRef he) {
 		auto h_next = he->twin->next;
 		auto h_pre = he;
