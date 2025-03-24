@@ -928,6 +928,9 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 		if(h->twin->face->boundary) {
 			return std::nullopt;
 		}
+		if (h->twin->face->degree() < 4) {
+			return std::nullopt;
+		}
 		halfedges.push_back(h);
 		vertices.push_back(h->vertex);
 		vertices_c.push_back(h->vertex);
@@ -939,18 +942,15 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 	vm->position = f->center();
 	interpolate_data(vertices_c, vm);
 	size_t n = halfedges.size();
-	for(size_t i = 0; i < n; i++ ) {
-		// set vertex of halfedges which originally refrenced to v to vm .
-		VertexRef v = vertices[i];
-		HalfedgeRef h = v->halfedge;
-		do {
+	// set vertex of halfedges which originally refrenced to v to vm .
+	for(HalfedgeRef fh: halfedges ) {
+		for (HalfedgeRef h = fh->twin->next; h != fh; h = h->twin->next){
 			h->vertex = vm;
-			h = h->twin->next;
-		} while (h != v->halfedge);
+		}
 	}
 
+	// connect prev edge of h to next edge of h;
 	for(size_t i = 0; i < n; i++ ) {
-		// connect prev edge of h to next edge of h;
 		HalfedgeRef h = halfedges[i]->twin;
 		HalfedgeRef head = h->next;
 		HalfedgeRef tail = head;

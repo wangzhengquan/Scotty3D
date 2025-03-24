@@ -88,9 +88,9 @@ Test test_a2_local_mix("a2.local.mix", []() {
 			case 5: {
 				auto f = face();
 		
-std::cout << "before:" << mesh << std::endl;
-std::cout << "f:" << f->id << std::endl;
-describe_face(f);
+// std::cout << "before:" << mesh << std::endl;
+// std::cout << "f:" << f->id << std::endl;
+// describe_face(f);
 				mesh.collapse_face(f);
 // std::cout << "after:" << mesh << std::endl;
 			} break;
