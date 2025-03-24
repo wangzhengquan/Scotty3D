@@ -515,6 +515,10 @@ private:
 	friend class Test;
 };
 
+inline std::ostream& operator<<(std::ostream& out, Halfedge_Mesh& mesh) {
+	out << mesh.describe();
+	return out;
+}
 
 
 /*

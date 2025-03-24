@@ -3,6 +3,23 @@
 #include "geometry/halfedge.h"
 #include "geometry/util.h"
 #include "util/rand.h"
+#include <iostream>
+
+void describe_face(Halfedge_Mesh::FaceRef f) {
+	auto h = f->halfedge;
+	auto origH = h;
+	do {
+		auto oh = h;
+		auto origOh  = oh;
+		std::cout << "v[" << h->vertex->id << "] outgo halfedges: " << std::endl;
+		do {
+			std::cout << "h" << oh->id << " " << oh->face->boundary << " " << oh->twin->face->boundary << std::endl;
+			oh = oh->twin->next;
+		} while(oh != origOh);
+		std::cout << std::endl;
+		h = h->next;
+	} while(h != origH);
+}
 
 Test test_a2_local_mix("a2.local.mix", []() {
 	RNG rng(2266524198);
@@ -32,75 +49,80 @@ Test test_a2_local_mix("a2.local.mix", []() {
 		return itr;
 	};
 
-    auto positions = [&](Halfedge_Mesh::FaceRef f) {
+  auto positions = [&](Halfedge_Mesh::FaceRef f) {
 		Halfedge_Mesh::HalfedgeRef face_he = f->halfedge;
 		Halfedge_Mesh::HalfedgeRef face_he_orig = face_he;
-        std::vector<Vec3> start_positions;
+    std::vector<Vec3> start_positions;
 		do {
-            start_positions.push_back(face_he->vertex->position);
+      start_positions.push_back(face_he->vertex->position);
 			face_he = face_he->next;
 		} while (face_he != face_he_orig);
-        return start_positions;
-    };
+    return start_positions;
+  };
 
 	for (uint32_t i = 0; i < operations; i++) {
 		int32_t op = rng.integer(0, 11);
 		switch (op) {
-		case 0: {
-			auto e = edge();
-			mesh.split_edge(e);
-		} break;
-		case 1: {
-			auto e = edge();
-			mesh.flip_edge(e);
-		} break;
-		case 2: {
-			auto e = edge();
-			mesh.collapse_edge(e);
-		} break;
-		case 3: {
-			auto f = face();
-			if(auto ret = mesh.extrude_face(f)) {
-                mesh.extrude_positions(ret.value(), ret.value()->normal(), 0.5f);
-            }
-		} break;
-		case 4: {
-			auto e = edge();
-			mesh.dissolve_edge(e);
-		} break;
-		case 5: {
-			auto f = face();
-			mesh.collapse_face(f);
-		} break;
-		case 6: {
-			auto f = face();
-			mesh.inset_vertex(f);
-		} break;
-		case 7: {
-			auto e = edge();
-			mesh.bisect_edge(e);
-		} break;
-		case 8: {
-			auto v = vertex();
-			if(auto ret = mesh.bevel_vertex(v)) {
-                mesh.bevel_positions(ret.value(), positions(ret.value()), ret.value()->normal(), 0.5f);
-            }
-		} break;
-		case 9: {
-			auto v = vertex();
-			mesh.dissolve_vertex(v);
-		} break;
-		case 10: {
-			auto e = edge();
-			if(auto ret = mesh.bevel_edge(e)) {
-                mesh.bevel_positions(ret.value(), positions(ret.value()), ret.value()->normal(), 0.5f);
-            }
-		} break;
-		default: die("Got bad random operation?");
+			case 0: {
+				auto e = edge();
+				mesh.split_edge(e);
+			} break;
+			case 1: {
+				auto e = edge();
+				mesh.flip_edge(e);
+			} break;
+			case 2: {
+				auto e = edge();
+				mesh.collapse_edge(e);
+			} break;
+			case 3: {
+				auto f = face();
+				if(auto ret = mesh.extrude_face(f)) {
+					mesh.extrude_positions(ret.value(), ret.value()->normal(), 0.5f);
+				}
+			} break;
+			case 4: {
+				auto e = edge();
+				mesh.dissolve_edge(e);
+			} break;
+			case 5: {
+				auto f = face();
+		
+std::cout << "before:" << mesh << std::endl;
+std::cout << "f:" << f->id << std::endl;
+describe_face(f);
+				mesh.collapse_face(f);
+// std::cout << "after:" << mesh << std::endl;
+			} break;
+			case 6: {
+				auto f = face();
+				mesh.inset_vertex(f);
+			} break;
+			case 7: {
+				auto e = edge();
+				mesh.bisect_edge(e);
+			} break;
+			case 8: {
+				auto v = vertex();
+				if(auto ret = mesh.bevel_vertex(v)) {
+					mesh.bevel_positions(ret.value(), positions(ret.value()), ret.value()->normal(), 0.5f);
+				}
+			} break;
+			case 9: {
+				auto v = vertex();
+				mesh.dissolve_vertex(v);
+			} break;
+			case 10: {
+				auto e = edge();
+				if(auto ret = mesh.bevel_edge(e)) {
+					mesh.bevel_positions(ret.value(), positions(ret.value()), ret.value()->normal(), 0.5f);
+				}
+			} break;
+			default: die("Got bad random operation?");
 		}
 
 		if (auto msg = mesh.validate()) {
-			throw Test::error("Invalid mesh after operation " + std::to_string(op) + " with seed " +
+			throw Test::error("Invalid mesh after iteration "+ std::to_string(i) +" operation " + std::to_string(op) + " with seed " +
 			                  std::to_string(rng.get_seed()) + ": " + msg.value().second);
 		}
 	}

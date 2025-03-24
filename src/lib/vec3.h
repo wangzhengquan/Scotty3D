@@ -155,6 +155,9 @@ struct Vec3 {
 	/// Return unit length vec in the same direction
 	Vec3 unit() const {
 		float n = norm();
+		if(n == 0) {
+			return Vec3(0);
+		}
 		return Vec3(x / n, y / n, z / n);
 	}
 

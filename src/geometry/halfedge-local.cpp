@@ -916,9 +916,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 
 	//Reminder: use interpolate_data() to merge corner_uv / corner_normal data on halfedges
 	// (also works for bone_weights data on vertices!)
-	if(f->boundary) {
+	if(f->boundary ) {
 		return std::nullopt;
 	}
+
 	std::vector<HalfedgeRef> halfedges;
 	std::vector<VertexRef> vertices;
 	std::vector<VertexCRef> vertices_c;
@@ -940,7 +941,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 	size_t n = halfedges.size();
 	for(size_t i = 0; i < n; i++ ) {
 		// set vertex of halfedges which originally refrenced to v to vm .
-		VertexCRef v = vertices[i];
+		VertexRef v = vertices[i];
 		HalfedgeRef h = v->halfedge;
 		do {
 			h->vertex = vm;
@@ -1019,7 +1020,14 @@ void Halfedge_Mesh::bevel_positions(FaceRef face, std::vector<Vec3> const &start
 	// and use the preceding and next vertex position from the original mesh
 	// (in the start_positions array) to compute an new vertex position.
 	// Adjust the positions of the vertices in the beveled face
- 
+
+	// std::cout << "\nstart_positions: " ;
+	// for(const Vec3 & p: start_positions) {
+	// 	std::cout << p << ",";
+	// }
+	// std::cout << "\ndirection: " << direction;
+	// std::cout << "\ndistance: " << distance << std::endl;
+
 	HalfedgeRef h = face->halfedge;
 	size_t i = 0;
 	do {
@@ -1029,7 +1037,11 @@ void Halfedge_Mesh::bevel_positions(FaceRef face, std::vector<Vec3> const &start
 			float projection = dot(outgoing, direction);
 			projection = projection == 0 ? 1 : projection;
 			float rate =  distance / projection;
+
 			v->position = start_positions[i] +  rate * outgoing ;
+// std::cout << "rate:" << rate <<  std::endl;
+// std::cout << "outgoing: "<< vout->id << ":" << vout->position << " - " <<v->id << ":" << v->position << "=" << outgoing << std::endl;
+// std::cout << "v->position: " << v->position << std::endl;
 			h = h->next;
 			++i;
 	} while (h != face->halfedge);

@@ -309,6 +309,7 @@ Vec3 Halfedge_Mesh::Face::normal() const {
 		n += cross(pi, pj);
 		h = h->next;
 	} while (h != halfedge);
+// std::cout << "n:" << n << std::endl;
 	return n.unit();
 }
 
@@ -435,7 +436,9 @@ std::string Halfedge_Mesh::describe() const {
 		    << " n:" << desc_halfedge(h.next)
 		    << " " << desc_vertex(h.vertex)
 		    << " " << desc_edge(h.edge)
-		    << " " << desc_face(h.face) << "\n";
+		    << " " << desc_face(h.face) 
+				<< " " << (h.face->boundary ? "B": "N" )
+				<< "\n";
 	}
 	for (auto const &v : vertices) {
 		oss << "  [v" << v.id << "] " << desc_halfedge(v.halfedge) << " @ " << v.position << "\n";
@@ -444,7 +447,7 @@ std::string Halfedge_Mesh::describe() const {
 		oss << "  [e" << e.id << "] " << desc_halfedge(e.halfedge) << "\n";
 	}
 	for (auto const &f : faces) {
-		oss << "  [f" << f.id << "] " << desc_halfedge(f.halfedge) << "\n";
+		oss << "  [f" << f.id << "] " << desc_halfedge(f.halfedge) << " " << (f.boundary ? "B": "N" ) << "\n";
 	}
 
 	return oss.str();
