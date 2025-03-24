@@ -597,12 +597,12 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	HalfedgeRef t = h->twin;
 
 	HalfedgeRef h_next = h->next;
-	HalfedgeRef h_prev = *prev(h);
+	HalfedgeRef h_prev = prev(h);
 	// std::cout << "h_prev:" << std::to_string(h_prev->id)<< std::endl;
 	HalfedgeRef h_next_next = h_next->next;
 
 	HalfedgeRef t_next = t->next;
-	HalfedgeRef t_prev = *prev(t);
+	HalfedgeRef t_prev = prev(t);
 	// std::cout << "t_prev:" << std::to_string(t_prev->id)<<  std::endl;
 	HalfedgeRef t_next_next = t_next->next;
 
@@ -659,8 +659,85 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face) {
 	//A2Lx7: (OPTIONAL) make_boundary
 
-	return std::nullopt; //TODO: actually write this code!
+	// Check if face is already a boundary face
+	if (face->boundary) {
+			return std::nullopt; // Can't make a boundary face into a boundary face
+	}
+	
+	
+	FaceRef orig_boundary_face = faces.end();
+	std::vector<HalfedgeRef> halfedges;
+	std::vector<HalfedgeRef> special_halfedges;
+	std::vector<FaceRef> boundary_faces;
+	std::vector<HalfedgeRef> erased_halfedges;
+	std::vector<VertexRef> erased_vertices;
+	HalfedgeRef h = face->halfedge;
+	HalfedgeRef hOrig = h;
+	size_t count = 0;
+	do {
+		halfedges.push_back(h);
+		bool isCurrentBoundary = h->twin->face->boundary;
+		if(isCurrentBoundary) {
+			erased_halfedges.push_back(h->twin);
+			if(orig_boundary_face == faces.end()) {
+				orig_boundary_face = h->twin->face;
+			}
+		}
+		
+		bool isNextBoundary = h->next->twin->face->boundary;
+		if( isNextBoundary != isCurrentBoundary) {
+			if (isCurrentBoundary) {
+				count++;
+				special_halfedges.push_back(h->twin);
+			} else {
+				special_halfedges.push_back(h->next);
+			}
+		} else if(isCurrentBoundary && isNextBoundary) {
+			erased_vertices.push_back(h->twin->vertex);
+		}
+		h = h->next;
+	} while (h != hOrig);
+
+	for (size_t i = 0 ; i< special_halfedges.size(); i++) {
+		auto he = special_halfedges[i];
+		auto h_next = he->twin->next;
+		auto h_pre = he;
+		for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);
+		h_pre->twin->next = h_next;
+		he->vertex->halfedge = h_next;
+		if(i == 0) {
+			face->halfedge = h_next;
+		} else if(i == 2) {
+			orig_boundary_face->halfedge = h_next;
+		}
+	}
+
+	auto setFace = [&](FaceRef f) {
+		HalfedgeRef h = f->halfedge;
+		HalfedgeRef hOrig = h;
+		do {
+			h->face = f;
+			h = h->next;
+		} while (h != hOrig);
+	};
+	
+	face->boundary = true;
+	setFace(face);
+	if(count < 2) {
+		erase_face(orig_boundary_face);
+		for (auto v : erased_vertices) {
+			erase_vertex(v);
+		}
+	} else {
+		setFace(orig_boundary_face);
+	}
+	
+	for (auto h : erased_halfedges) {
+		erase_fulledge(h);
+	}
+	return face;
 }
+
 
 /*
  * dissolve_vertex: merge non-boundary faces adjacent to vertex, removing vertex

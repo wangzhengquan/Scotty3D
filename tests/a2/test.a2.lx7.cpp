@@ -50,8 +50,8 @@ Test test_a2_lx7_make_boundary_basic_inner("a2.lx7.make_boundary.basic.inner", [
 		Vec3(-1.3f,-0.7f, 0.0f), Vec3(1.1f,-1.0f, 0.0f), Vec3(1.4f, -1.0f, 0.0f)
 	}, {
 		{0, 4, 5, 1}, 
-        {2, 6, 3}, 
-        {1, 5, 6, 2}
+		{2, 6, 3}, 
+		{1, 5, 6, 2}
 	});
 	Halfedge_Mesh::FaceRef face = mesh.faces.begin();
     std::advance(face, 2);

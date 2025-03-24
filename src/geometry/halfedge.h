@@ -113,15 +113,13 @@ public:
 	//turn a non-boundary face into a boundary face
 	std::optional<FaceRef> make_boundary(FaceRef f);
 
-	std::optional<HalfedgeRef> prev(HalfedgeRef _h) {
+	HalfedgeRef prev(HalfedgeRef _h) {
 		HalfedgeRef h = _h;
-		HalfedgeRef pre;
-		do {
-			pre = h;
+		while(h->next != _h) {
 			h = h->next;
-		} while (h != _h && h != halfedges.end());
-		return pre;
-	}
+		}
+		return h;
+	} 
 
 
 	//--- unification ---
