@@ -495,8 +495,8 @@ private:
 		}
 		return h;
 	} 
-	
-	HalfedgeRef reconnect_after_erase_edge(HalfedgeRef he) {
+
+	HalfedgeRef reconnect_after_erase_halfedge(HalfedgeRef he) {
 		auto h_next = he->twin->next;
 		auto h_pre = he;
 		for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);

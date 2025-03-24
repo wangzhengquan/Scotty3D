@@ -700,11 +700,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 
 	for (size_t i = 0 ; i< special_halfedges.size(); i++) {
 		auto he = special_halfedges[i];
-		// auto h_next = he->twin->next;
-		// auto h_pre = he;
-		// for (;h_pre->twin->next != he; h_pre = h_pre->twin->next);
-		// h_pre->twin->next = h_next;
-		auto h_next = reconnect_after_erase_edge(he);
+		auto h_next = reconnect_after_erase_halfedge(he);
 		
 		if(i == 0) {
 			face->halfedge = h_next;
@@ -812,35 +808,28 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_vertex(VertexRef v
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::dissolve_edge(EdgeRef e) {
 	// A2Lx2 (OPTIONAL): dissolve_edge
-	//Reminder: use interpolate_data() to merge corner_uv / corner_normal data
+	// Reminder: use interpolate_data() to merge corner_uv / corner_normal data
 	if(this->faces.size() < 3) {
 		return std::nullopt;
 	}
-	std::vector<HalfedgeRef> halfedges1, halfedges2;
 	HalfedgeRef h = e->halfedge;
 	h = h->face->boundary ? h : h->twin ;
 	FaceRef f = h->face;
+	HalfedgeRef  h1 = reconnect_after_erase_halfedge(h);
+	reconnect_after_erase_halfedge(h->twin);
 
-	HalfedgeRef h1 = h;
-	while((h1 = h1->next) != h) {
-		halfedges1.push_back(h1);
-	}
-
-	HalfedgeRef h2 = h->twin;
-	while((h2 = h2->next) != h->twin) {
-		halfedges2.push_back(h2);
-		h2->face=f;
-	}
-	f->halfedge = halfedges1.front();
-	h->vertex->halfedge = h->twin->next;
-	h->twin->vertex->halfedge = h->next;
-	halfedges1.back()->next = halfedges2.front();
-	halfedges2.back()->next = halfedges1.front();
-	 
+	HalfedgeRef he = h1;
+	do {
+		he->face = f;
+		he = he->next;
+	} while(he != h1);
+	f->halfedge = h1;
 	erase_face(h->twin->face);
 	erase_fulledge(h);
-  return f;
+	return f;
+
 }
+ 
 
 /* collapse_edge: collapse edge to a vertex at its middle
  *  e: the edge to collapse
