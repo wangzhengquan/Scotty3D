@@ -36,7 +36,7 @@ Initial mesh:
 |   | | /
 4---5 6/
 
-Weld Edges on Edges: 1-5 and 2-4
+Weld Edges on Edges: 1-5 and 2-6
 
 After mesh:
 0---1\     

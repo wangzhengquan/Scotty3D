@@ -1051,8 +1051,55 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeR
 	//A2Lx8: Weld Edges
 
 	//Reminder: use interpolate_data() to merge bone_weights data on vertices!
+	if(!e->on_boundary() || !e2->on_boundary()) {	
+ 	 return std::nullopt;
+	}
+	HalfedgeRef h = e->halfedge, h2 = e2->halfedge;
+	h = h->face->boundary ? h->twin : h;
+	h2 = h2->face->boundary ? h2->twin : h2;
+	HalfedgeRef t = h->twin, t2 = h2->twin;
+	FaceRef f = t->face, f2 = t2->face;
+	
 
-    return std::nullopt;
+	VertexRef va = h->vertex, vb = h->twin->vertex, 
+						v2a = h2->vertex, v2b = h2->twin->vertex;
+	interpolate_data({va, v2b}, va);
+	interpolate_data({vb, v2a}, vb);
+	va->position = (va->position + v2b->position) / 2;
+	vb->position = (vb->position + v2a->position) / 2;
+
+	for(auto he = t2->next; he != t2; he = he->next) {
+		he->face = f;
+	}
+ 
+	HalfedgeRef he = h2;
+	do {
+		
+		he->vertex = vb;
+		he = he->twin->next;
+	} while(he != h2);
+
+	he = t2;
+	do {
+		he->vertex = va;
+		he = he->twin->next;
+	} while(he != t2);
+
+	h2->edge = e;
+	h2->twin = h;
+	h->twin = h2;
+	prev(t)->next = t2->next;
+	prev(t2)->next = t->next;
+
+	erase_vertex(v2a);
+	erase_vertex(v2b);
+	erase_face(f2);
+	erase_edge(e2);
+	erase_halfedge(t2);
+	erase_halfedge(t);
+	
+	
+	return e;
 }
 
 
