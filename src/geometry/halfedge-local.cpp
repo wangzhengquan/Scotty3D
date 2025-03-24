@@ -1066,18 +1066,18 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeR
 	interpolate_data({va, v2b}, va);
 	interpolate_data({vb, v2a}, vb);
 	va->position = (va->position + v2b->position) / 2;
-	vb->position = (vb->position + v2a->position) / 2;
+	v2a->position = (v2a->position + vb->position) / 2;
 
 	for(auto he = t2->next; he != t2; he = he->next) {
 		he->face = f;
 	}
  
-	HalfedgeRef he = h2;
+	HalfedgeRef he = t;
 	do {
 		
-		he->vertex = vb;
+		he->vertex = v2a;
 		he = he->twin->next;
-	} while(he != h2);
+	} while(he != t);
 
 	he = t2;
 	do {
@@ -1091,7 +1091,7 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeR
 	prev(t)->next = t2->next;
 	prev(t2)->next = t->next;
 
-	erase_vertex(v2a);
+	erase_vertex(vb);
 	erase_vertex(v2b);
 	erase_face(f2);
 	erase_edge(e2);
