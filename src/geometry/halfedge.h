@@ -509,6 +509,19 @@ private:
 		he->vertex->halfedge = h_next;
 		return h_next;
 	}
+
+	/**
+	 * @brief Change vertext of all outgoing halfedges of source to target.
+	 * this is usefull when the source vertex was merge into target.
+	 */
+	VertexRef change_vertex_of_outgoing_halfedges(VertexRef source, VertexRef target){
+		HalfedgeRef he = source->halfedge;
+		do {
+			he->vertex = target;
+			he = he->twin->next;
+		} while(he != source->halfedge);
+		return target;
+	}
 	//a fresh element id; assigned + incremented by emplace_*() functions:
 	uint32_t next_edge_id = 0;
 	uint32_t next_halfedge_id = 0;

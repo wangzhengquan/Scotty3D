@@ -934,8 +934,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 				colineHe->second->twin = he->twin;
 				colineHe->second->twin->edge = colineHe->second->edge;
 				colineHe->second->twin->twin = colineHe->second;
-				// halfedgesMap.emplace(line, he);
-				
 			}
 		} else {
 			if (he->twin->next == h2) {
@@ -999,7 +997,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 		halfedges.push_back(h);
 		vertices.push_back(h->vertex);
 		vertices_c.push_back(h->vertex);
-		// corner_halfedges.push_back(h->twin->next);
 		h = h->next;
 	} while(h !=f->halfedge);
 
@@ -1007,13 +1004,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 	vm->position = f->center();
 	interpolate_data(vertices_c, vm);
 	size_t n = halfedges.size();
-	// set vertex of halfedges which originally refrenced to v to vm .
-	for(HalfedgeRef fh: halfedges ) {
-		for (HalfedgeRef h = fh->twin->next; h != fh; h = h->twin->next){
-			h->vertex = vm;
-		}
+	// set vertex of halfedges which originally refrenced to v to vm.
+	for (VertexRef v: vertices) {
+		change_vertex_of_outgoing_halfedges(v, vm);
 	}
-
 	// connect prev edge of h to next edge of h;
 	for(size_t i = 0; i < n; i++ ) {
 		HalfedgeRef h = halfedges[i]->twin;
@@ -1037,7 +1031,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 	}
 	erase_face(f);
 	return vm;
-  // return std::nullopt;
 }
 
 /*
@@ -1072,19 +1065,9 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeR
 		he->face = f;
 	}
  
-	HalfedgeRef he = t;
-	do {
-		
-		he->vertex = v2a;
-		he = he->twin->next;
-	} while(he != t);
-
-	he = t2;
-	do {
-		he->vertex = va;
-		he = he->twin->next;
-	} while(he != t2);
-
+	change_vertex_of_outgoing_halfedges(v2b, va);
+	change_vertex_of_outgoing_halfedges(vb, v2a);
+	 
 	h2->edge = e;
 	h2->twin = h;
 	h->twin = h2;
