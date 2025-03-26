@@ -100,6 +100,40 @@ Test test_a2_g1_triangulate_basic_square("a2.g1.triangulate.basic.square", []() 
 });
 
 /*
+Triangulates a Pentagon
+*/
+Test test_a2_g1_triangulate_basic_pentagon("a2.g1.triangulate.basic.pentagon", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+					Vec3{0.0f, 0.0f, 0.5f},
+		Vec3{-0.5f, 0.0f, 0.0f}, Vec3{0.5f, 0.0f, 0.0f},
+		Vec3{ -0.5f, 0.0f,-0.5f}, Vec3{ 0.5f, 0.0f, -0.5f}
+	},{
+		{0, 1, 3, 4, 2}
+	});
+
+	// Many different implementations of triangulating, so just checks that all the faces are triangles and some other misc things
+	expect_triangulate(mesh);
+});
+
+/*
+Triangulates a hexagon
+*/
+Test test_a2_g1_triangulate_basic_hexagon("a2.g1.triangulate.basic.hexagon", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+					Vec3{0.0f, 0.0f, 0.5f},
+		Vec3{-0.5f, 0.0f, 0.0f}, Vec3{0.5f, 0.0f, 0.0f},
+		Vec3{ -0.5f, 0.0f,-0.5f}, Vec3{ 0.5f, 0.0f, -0.5f},
+					Vec3{ 0.0f, 0.0f, -1.0f},
+	},{
+		{0, 1, 3, 5, 4, 2}
+	});
+
+	// Many different implementations of triangulating, so just checks that all the faces are triangles and some other misc things
+	expect_triangulate(mesh);
+});
+
+
+/*
 BASIC CASE
 
 Triangulates a cube with square faces
