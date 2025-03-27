@@ -130,11 +130,49 @@ void Halfedge_Mesh::catmark_subdivide() {
 	// https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface
 
 	// Faces
+	for(FaceCRef f = faces.begin(); f != faces.end(); ++f) {
+		if(!f->boundary) face_vertex_positions.emplace(f,  f->center());
+	}
 
 	// Edges
-
+	for(EdgeCRef e = edges.begin(); e != edges.end(); ++e) {
+		HalfedgeRef h = e->halfedge;
+		HalfedgeRef t = h->twin;
+		if (e->on_boundary()) {
+std::cout << "e->on_boundary" << std::endl;
+			edge_vertex_positions.emplace(e,  e->center());
+		} else {
+			edge_vertex_positions.emplace(e,  (h->vertex->position + t->vertex->position + h->face->center() + t->face->center()) / 4);
+		}
+	}
 	// Vertices
-
+	for(VertexCRef v = vertices.begin(); v != vertices.end(); ++v) {
+		if (v->on_boundary()) {
+		  std::cout << "v->on_boundary" << std::endl;
+			Vec3 sum = Vec3(0, 0, 0);
+			HalfedgeRef h = v->halfedge;
+			do {
+				if (h->edge->on_boundary()) {
+					sum += h->twin->vertex->position;
+				}  
+				 
+				h = h->twin->next;
+			} while (h != v->halfedge);
+			vertex_positions.emplace(v,  (6 * v->position + sum) / 8);
+		} else {
+			Vec3 e_sum = Vec3(0, 0, 0);
+			Vec3 f_sum = Vec3(0, 0, 0);
+			HalfedgeRef h = v->halfedge;
+			size_t n = 0;
+			do {
+				f_sum += h->face->center();
+				e_sum += h->edge->center();
+				n++;
+				h = h->twin->next;
+			} while (h != v->halfedge);
+			vertex_positions.emplace(v,  (f_sum / n + 2 * e_sum / n + (n - 3) * v->position) / n);
+		}
+	}
 	
 	//Now, use the provided helper function to actually perform the subdivision:
 	catmark_subdivide_helper(vertex_positions, edge_vertex_positions, face_vertex_positions);
