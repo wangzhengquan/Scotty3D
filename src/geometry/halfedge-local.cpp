@@ -387,6 +387,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 	// Remember to also fill in bevel_vertex_helper (A2Lx5h)
 	
 	// Collect the necessary halfedges around the vertex
+	std::cout << "---bevel_vertex---" << std::endl;
 	std::vector<HalfedgeRef> vertex_halfedges;
 	HalfedgeRef h = v->halfedge;
 	do {

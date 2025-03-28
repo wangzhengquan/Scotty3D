@@ -139,7 +139,6 @@ void Halfedge_Mesh::catmark_subdivide() {
 		HalfedgeRef h = e->halfedge;
 		HalfedgeRef t = h->twin;
 		if (e->on_boundary()) {
-std::cout << "e->on_boundary" << std::endl;
 			edge_vertex_positions.emplace(e,  e->center());
 		} else {
 			edge_vertex_positions.emplace(e,  (h->vertex->position + t->vertex->position + h->face->center() + t->face->center()) / 4);
