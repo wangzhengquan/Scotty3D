@@ -220,16 +220,12 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(EdgeRef e) {
 	HalfedgeRef t2 = t1->next;
 	HalfedgeRef h2 = t2->twin;
 
-	HalfedgeRef h3 = t2->next;
-	HalfedgeRef h4 = h3->next;
+	auto split_face = [this, &vm](HalfedgeRef h0) {
+		FaceRef f = h0->face;
+		HalfedgeRef h1 = h0->next;
+		HalfedgeRef h2 = h1->next;
+		HalfedgeRef h3 = h2->next;
 
-	HalfedgeRef h5 = h1->next;
-	HalfedgeRef h6 = h5->next;
-
-	FaceRef f1 = t1->face;
-	FaceRef f2 = h2->face;
-	 
-	if(!f1->boundary) {
 		FaceRef fnew = emplace_face();
 		EdgeRef enew = emplace_edge();
 		HalfedgeRef hnew = emplace_halfedge();
@@ -239,53 +235,33 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(EdgeRef e) {
 		enew->halfedge = hnew;
 
 		hnew->twin = tnew;
-		hnew->next = h4;
+		hnew->next = h3;
 		hnew->vertex = vm;
 		hnew->edge = enew;
-		hnew->face = f1;
-
-		tnew->twin = hnew;
-		tnew->next = t2;
-		tnew->vertex = h4->vertex;
-		tnew->edge = enew;
-		tnew->face = fnew;
-		 
-		t1->next = hnew;
-		t2->face = fnew;
-		h3->face = fnew;
-		h3->next = tnew;
-		
-
-		f1->halfedge = hnew;
-	}
-
-	if(!f2->boundary) {
-		FaceRef fnew = emplace_face();
-		EdgeRef enew = emplace_edge();
-		HalfedgeRef hnew = emplace_halfedge();
-		HalfedgeRef tnew = emplace_halfedge();
-
-		fnew->halfedge = tnew;
-		enew->halfedge = hnew;
-
-		hnew->twin = tnew;
-		hnew->next = h6;
-		hnew->vertex = vm;
-		hnew->edge = enew;
-		hnew->face = f2;
+		hnew->face = f;
+		interpolate_data({h1}, hnew);
 
 		tnew->twin = hnew;
 		tnew->next = h1;
-		tnew->vertex = h6->vertex;
+		tnew->vertex = h3->vertex;
 		tnew->edge = enew;
 		tnew->face = fnew;
+		interpolate_data({h3}, tnew);
 		 
-		h2->next = hnew;
+		h0->next = hnew;
 		h1->face = fnew;
-		h5->face = fnew;
-		h5->next = tnew;
+		h2->face = fnew;
+		h2->next = tnew;
 
-		f2->halfedge = hnew;
+		f->halfedge = hnew;
+	};
+	 
+	if(!t1->face->boundary) {
+		split_face(t1);
+	}
+
+	if(! h2->face->boundary) {
+		split_face(h2);
 	}
 	return vm;
 }
