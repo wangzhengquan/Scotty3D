@@ -147,7 +147,7 @@ void Halfedge_Mesh::catmark_subdivide() {
 	// Vertices
 	for(VertexCRef v = vertices.begin(); v != vertices.end(); ++v) {
 		if (v->on_boundary()) {
-		  std::cout << "v->on_boundary" << std::endl;
+		  // std::cout << "v->on_boundary" << std::endl;
 			Vec3 sum = Vec3(0, 0, 0);
 			HalfedgeRef h = v->halfedge;
 			do {
@@ -542,17 +542,17 @@ void Halfedge_Mesh::catmark_subdivide_helper(
 
 		//get face vertices and corners to interpolate data from:
 		// (skip the odd vertices/halfedges -- they were just added)
-		std::vector< HalfedgeCRef > from_corners;
-		std::vector< VertexCRef > from_vertices;
+		std::vector< HalfedgeCRef > corner_halfedges;
+		std::vector< VertexCRef > corner_vertices;
 		for (uint32_t i = 0; i < face_halfedges.size(); i += 2) {
-			from_corners.emplace_back(face_halfedges[i]);
-			from_vertices.emplace_back(face_halfedges[i]->vertex);
+			corner_halfedges.emplace_back(face_halfedges[i]);
+			corner_vertices.emplace_back(face_halfedges[i]->vertex);
 		}
 
 		//add central vertex:
 		VertexRef vm = emplace_vertex();
 		vm->position = face_vertex_positions.at(f);
-		interpolate_data(from_vertices, vm);
+		interpolate_data(corner_vertices, vm);
 
 		//add halfedges and edges around the central vertex:
 		std::vector< EdgeRef > inner_edges;
@@ -577,7 +577,7 @@ void Halfedge_Mesh::catmark_subdivide_helper(
 			t->vertex = vm;
 			t->edge = e;
 			//t->face will be set later
-			interpolate_data(from_corners, t);
+			interpolate_data(corner_halfedges, t);
 
 			if (i == 0) vm->halfedge = t;
 

@@ -384,7 +384,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::inset_vertex(FaceRef f) {
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 	//A2Lx5 (OPTIONAL): Bevel Vertex
 	// Reminder: This function does not update the vertex positions.
-	// Remember to also fill in bevel_vertex_helper (A2Lx5h)
+	// Remember to also fill in bevel_positions (A2Lx5h)
 	
 	// Collect the necessary halfedges around the vertex
 	std::cout << "---bevel_vertex---" << std::endl;
@@ -451,7 +451,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	//A2Lx6 (OPTIONAL): Bevel Edge
 	// Reminder: This function does not update the vertex positions.
-	// remember to also fill in bevel_edge_helper (A2Lx6h)
+	// remember to also fill in bevel_positions (A2Lx6h)
 	if (e->on_boundary()) {
 		return std::nullopt;
 	}
@@ -488,6 +488,8 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 			VertexRef b = new_vertices[(s - 1 + sides) % sides];
 			HalfedgeRef he = halfedges[s];
 			HalfedgeRef new_he = emplace_fulledge();
+			interpolate_data({e->halfedge}, new_he); 
+			interpolate_data({e->halfedge->twin}, new_he->twin); 
 			he->vertex = a;
 			a->halfedge = he;
 			new_he->vertex = a;
@@ -522,7 +524,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
 	//A2L4: Extrude Face
 	// Reminder: This function does not update the vertex positions.
-	// Remember to also fill in Extrude Positions Helper (A2L4h)
+	// Remember to also fill in Extrude Positions (A2L4h)
 
 	// Collect the necessary halfedges and vertices
 	std::vector<HalfedgeRef> face_halfedges;
@@ -551,7 +553,10 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
 	
 	// Create new halfedges and vertices
 	for (size_t i = 0; i < n; ++i) {
-		new_halfedges.emplace_back(emplace_fulledge());
+		HalfedgeRef he = emplace_fulledge();
+		interpolate_data({face_halfedges[i]}, he); 
+		interpolate_data({face_halfedges[i]->twin}, he->twin);
+		new_halfedges.emplace_back(he);
 		new_corner_halfedges.emplace_back(emplace_fulledge());
 
 		new_vertices.emplace_back(copyVertex(face_halfedges[i]->vertex));
@@ -565,8 +570,10 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
 		face_halfedges[i]->set_nf(new_corner_halfedges[(i+1)%n]->twin, new_faces[i]);
 
 		new_corner_halfedges[i]->set_nvf( face_halfedges[i], new_vertices[i],  new_faces[i]);
-		new_corner_halfedges[i]->twin->set_nvf( new_halfedges[(i + n - 1) % n]->twin, face_vertices[i],  new_faces[(i + n - 1) % n]);
-
+		interpolate_data({face_halfedges[i], new_halfedges[i]}, new_corner_halfedges[i]);
+		new_corner_halfedges[(i+1)%n]->twin->set_nvf(new_halfedges[i]->twin, face_vertices[(i+1)%n], new_faces[i]);
+		interpolate_data({face_halfedges[i], new_halfedges[i]->twin}, new_corner_halfedges[(i+1)%n]);
+		
 		new_vertices[i]->halfedge = new_halfedges[i];
 		new_faces[i]->halfedge = face_halfedges[i];
 	}
@@ -1133,7 +1140,7 @@ void Halfedge_Mesh::bevel_positions(FaceRef face, std::vector<Vec3> const &start
 			float projection = dot(outgoing, direction);
 			projection = projection == 0 ? 1 : projection;
 			float rate =  distance / projection;
-
+			rate = std::clamp(rate, -1.0f, 1.0f);
 			v->position = start_positions[i] +  rate * outgoing ;
 // std::cout << "rate:" << rate <<  std::endl;
 // std::cout << "outgoing: "<< vout->id << ":" << vout->position << " - " <<v->id << ":" << v->position << "=" << outgoing << std::endl;
@@ -1175,12 +1182,10 @@ void Halfedge_Mesh::extrude_positions(FaceRef face, Vec3 move, float shrink) {
 
 	HalfedgeRef h = face->halfedge;
 	do {
-			h->vertex->position += move; // Move along the normal
-			h->vertex->position *= (1.0f - shrink); // Shrink toward the centroid
+			h->vertex->position += move; 
+			h->vertex->position *= (1.0f - shrink);  
 			h = h->next;
 	} while (h != face->halfedge);
-
-	 
 	
 }
 
