@@ -239,14 +239,14 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(EdgeRef e) {
 		hnew->vertex = vm;
 		hnew->edge = enew;
 		hnew->face = f;
-		interpolate_data({h1}, hnew);
+		interpolate_data({h0, h3}, hnew);
 
 		tnew->twin = hnew;
 		tnew->next = h1;
 		tnew->vertex = h3->vertex;
 		tnew->edge = enew;
 		tnew->face = fnew;
-		interpolate_data({h3}, tnew);
+		interpolate_data({h2, h1}, tnew);
 		 
 		h0->next = hnew;
 		h1->face = fnew;
@@ -266,8 +266,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(EdgeRef e) {
 	return vm;
 }
 
-
-
 /*
  * inset_vertex: divide a face into triangles by placing a vertex at f->center()
  *  f: the face to add the vertex to
@@ -280,6 +278,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::inset_vertex(FaceRef f) {
 	// A2Lx4 (OPTIONAL): inset vertex
 	if (f->boundary) return std::nullopt;
 	std::vector<HalfedgeRef> halfedges;
+	std::vector<HalfedgeCRef> halfedges_c;
 	std::vector<VertexRef> vertices;
 	std::vector<VertexCRef> vertices_c;
 	std::vector<HalfedgeRef> new_halfedges;
@@ -287,6 +286,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::inset_vertex(FaceRef f) {
 	HalfedgeRef h = f->halfedge;
 	do {
 		halfedges.push_back(h);
+		halfedges_c.push_back(h);
 		vertices.push_back(h->vertex);
 		vertices_c.push_back(h->vertex);
 		new_halfedges.push_back(emplace_fulledge());
@@ -304,7 +304,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::inset_vertex(FaceRef f) {
 			vm->halfedge = new_halfedges[i]->twin;
 		}
 		new_halfedges[i]->set_nvf(new_halfedges[(i + n - 1) % n]->twin, vertices[i], new_faces[(i + n - 1) % n]);
+		// new_halfedges[(i+1)%n]->set_nvf(new_halfedges[i]->twin, vertices[(i+1)%n], new_faces[i]);
+		interpolate_data({halfedges[i]}, new_halfedges[i]);
 		new_halfedges[i]->twin->set_nvf(halfedges[i], vm, new_faces[i]);
+		interpolate_data(halfedges_c, new_halfedges[i]->twin);
 		halfedges[i]->set_nf(new_halfedges[(i + 1) % n], new_faces[i]);
 		new_faces[i]->halfedge = new_halfedges[i]->twin;
 	}
