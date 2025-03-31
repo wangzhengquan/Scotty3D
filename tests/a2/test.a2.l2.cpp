@@ -38,7 +38,7 @@ After mesh:
 |  | /
 4--5/
 */
-Test test_a2_l2_split_edge_basic_simple("a2.l2.split_edge.basic.simple", []() {
+Test test_a2_l2_split_edge_basic_simple1("a2.l2.split_edge.basic.simple1", []() {
 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
 		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
 		                                            Vec3(2.2f, 0.0f, 0.0f),
