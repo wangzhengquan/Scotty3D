@@ -353,7 +353,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 	// Remember to also fill in bevel_positions (A2Lx5h)
 	
 	// Collect the necessary halfedges around the vertex
-	std::cout << "---bevel_vertex---" << std::endl;
 	std::vector<HalfedgeRef> vertex_halfedges;
 	std::vector<VertexRef> new_vertices;
 	HalfedgeRef h = v->halfedge;
@@ -386,23 +385,22 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 			new_he->face = new_face;
 			new_he->twin->vertex = b;
 			new_he->twin->face = he->face; 
+			interpolate_data({v->halfedge}, new_he);
 			new_halfedges.push_back(new_he);
 			
 	}
 
 	for (size_t s = 0; s < sides; ++s) {
 		new_halfedges[(s + 1) % sides]->next = new_halfedges[s];
-		interpolate_data({vertex_halfedges[s]}, new_halfedges[s]);
+		// interpolate_data({vertex_halfedges[s]}, new_halfedges[s]);
 		new_halfedges[s]->twin->next = vertex_halfedges[s];
-		interpolate_data({vertex_halfedges[s]->twin, vertex_halfedges[(s+1)%sides]}, new_halfedges[(s+1)%sides]->twin);
+		// interpolate_data({vertex_halfedges[s]->twin, vertex_halfedges[(s+1)%sides]}, new_halfedges[(s+1)%sides]->twin);
 		vertex_halfedges[s]->twin->next = new_halfedges[(s + 1) % sides]->twin;
 	}
-	// Update the halfedge pointer for the new face
+
 	new_face->halfedge = new_halfedges.front();
-	// Remove the original vertex
 	erase_vertex(v);
 
-	// Return the newly created face
 	return new_face;
 }
 
@@ -421,21 +419,25 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	if (e->on_boundary()) {
 		return std::nullopt;
 	}
-	std::vector<HalfedgeRef> halfedges;
+	std::vector<HalfedgeRef> halfedges, new_halfedges;
 	std::vector<VertexRef> new_vertices;
 	HalfedgeRef h = e->halfedge;
 	HalfedgeRef hOrig = h;
 
-	auto add_new_vertex = [&]() {
+	inline auto copy_vertex = [this](VertexRef vertex) {
 		VertexRef new_v = emplace_vertex();
-		new_v->position = hOrig->vertex->position;
-		interpolate_data({hOrig->vertex}, new_v); // Copy data from the original vertex
-		new_vertices.push_back(new_v);
+		new_v->position = vertex->position;
+		interpolate_data({vertex}, new_v); // Copy data from the original vertex
+		return new_v;
 	};
+	
 	size_t sides1=0;
 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
 		halfedges.push_back(h);
-		add_new_vertex();
+		new_vertices.push_back(copy_vertex(hOrig->vertex));
+		HalfedgeRef new_he = emplace_fulledge();
+		interpolate_data({hOrig}, new_he);
+		new_halfedges.push_back(new_he);
 		sides1++;
 	}
 
@@ -443,18 +445,20 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	hOrig = h;
 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
 		halfedges.push_back(h);
-		add_new_vertex();
+		new_vertices.push_back(copy_vertex(hOrig->vertex));
+		HalfedgeRef new_he = emplace_fulledge();
+		interpolate_data({hOrig}, new_he);
+		new_halfedges.push_back(new_he);
 	}
 
 	size_t sides =  new_vertices.size();
 	// Create new edges and faces
-	std::vector<HalfedgeRef> new_halfedges;
 	FaceRef new_face = emplace_face();
 	for (size_t s = 0; s < sides; ++s) {
 			VertexRef a = new_vertices[s];
 			VertexRef b = new_vertices[(s - 1 + sides) % sides];
 			HalfedgeRef he = halfedges[s];
-			HalfedgeRef new_he = emplace_fulledge();
+			HalfedgeRef new_he = new_halfedges[s];
 			he->vertex = a;
 			a->halfedge = he;
 			new_he->vertex = a;
@@ -489,85 +493,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	erase_fulledge(e->halfedge);
 	return new_face;
 }
-
-// std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
-// 	//A2Lx6 (OPTIONAL): Bevel Edge
-// 	// Reminder: This function does not update the vertex positions.
-// 	// remember to also fill in bevel_positions (A2Lx6h)
-// 	if (e->on_boundary()) {
-// 		return std::nullopt;
-// 	}
-// 	std::vector<HalfedgeRef> halfedges;
-// 	std::vector<VertexRef> new_vertices;
-// 	HalfedgeRef h = e->halfedge;
-// 	HalfedgeRef hOrig = h;
-
-// 	auto add_new_vertex = [&]() {
-// 		VertexRef new_v = emplace_vertex();
-// 		new_v->position = hOrig->vertex->position;
-// 		interpolate_data({hOrig->vertex}, new_v); // Copy data from the original vertex
-// 		new_vertices.push_back(new_v);
-// 	};
-
-// 	size_t sides1=0;
-// 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
-// 		halfedges.push_back(h);
-// 		add_new_vertex();
-// 		sides1++;
-// 	}
-
-// 	h = e->halfedge->twin;
-// 	hOrig = h;
-// 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
-// 		halfedges.push_back(h);
-// 		add_new_vertex();
-// 	}
-
-// 	size_t sides =  new_vertices.size();
-// 	// Create new edges and faces
-// 	std::vector<HalfedgeRef> new_halfedges;
-// 	FaceRef new_face = emplace_face();
-// 	for (size_t s = 0; s < sides; ++s) {
-// 		// a ~ b
-// 		VertexRef a = new_vertices[(s+1)%sides];
-// 		VertexRef b = new_vertices[s];
-// 		HalfedgeRef he = halfedges[s];
-// 		HalfedgeRef new_he = emplace_fulledge();
-// 		he->vertex = b;
-// 		b->halfedge = he;
-// 		new_he->vertex = a;
-// 		new_he->face = new_face;
-// 		new_he->twin->vertex = b;
-// 		new_he->twin->face = he->twin->face; 
-// 		new_halfedges.push_back(new_he);
-// 	}
-	
-// 	for (size_t s = 0; s < sides; ++s) {
-// std::printf("halfedges[%d]: %d \n", s, halfedges[s]->id);
-// 		if(s+1 == sides) {
-// 			// 0 ~ (sides-1)
-// 			interpolate_data({e->halfedge}, new_halfedges[s]);
-// 			interpolate_data({e->halfedge->twin}, new_halfedges[s]->twin);
-// 		} else if(s+1 == sides1) {
-// 			// sides1 ~ s
-// 			interpolate_data({e->halfedge->twin}, new_halfedges[s]);
-// 			interpolate_data({e->halfedge}, new_halfedges[s]->twin);
-// 		} else {
-// 			interpolate_data({halfedges[s]}, new_halfedges[s]);
-// 			interpolate_data({halfedges[s]->twin, halfedges[(s+1)%sides]}, new_halfedges[s]->twin);
-// 		}
-// 		new_halfedges[(s + 1) % sides]->next = new_halfedges[s];
-// 		new_halfedges[s]->twin->next = halfedges[s];
-// 		halfedges[s]->twin->next = new_halfedges[(s + 1) % sides]->twin;
-// 	}
-// 	// Update the halfedge pointer for the new face
-// 	new_face->halfedge = new_halfedges.front();
-// 	// Remove the original vertex
-// 	erase_vertex(e->halfedge->vertex);
-// 	erase_vertex(e->halfedge->twin->vertex);
-// 	erase_fulledge(e->halfedge);
-// 	return new_face;
-// }
 
 /*
  * extrude_face: creates a face inset into a face
