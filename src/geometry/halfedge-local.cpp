@@ -386,15 +386,15 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 			new_he->twin->vertex = b;
 			new_he->twin->face = he->face; 
 			interpolate_data({v->halfedge}, new_he);
+			interpolate_data({v->halfedge->twin}, new_he->twin);
 			new_halfedges.push_back(new_he);
-			
 	}
 
 	for (size_t s = 0; s < sides; ++s) {
 		new_halfedges[(s + 1) % sides]->next = new_halfedges[s];
-		// interpolate_data({vertex_halfedges[s]}, new_halfedges[s]);
+		interpolate_data({vertex_halfedges[s]}, new_halfedges[s]);
 		new_halfedges[s]->twin->next = vertex_halfedges[s];
-		// interpolate_data({vertex_halfedges[s]->twin, vertex_halfedges[(s+1)%sides]}, new_halfedges[(s+1)%sides]->twin);
+		interpolate_data({vertex_halfedges[s]->twin, vertex_halfedges[(s+1)%sides]}, new_halfedges[(s+1)%sides]->twin);
 		vertex_halfedges[s]->twin->next = new_halfedges[(s + 1) % sides]->twin;
 	}
 
@@ -424,20 +424,25 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	HalfedgeRef h = e->halfedge;
 	HalfedgeRef hOrig = h;
 
-	inline auto copy_vertex = [this](VertexRef vertex) {
+	auto copy_vertex = [this](VertexRef vertex) {
 		VertexRef new_v = emplace_vertex();
 		new_v->position = vertex->position;
 		interpolate_data({vertex}, new_v); // Copy data from the original vertex
 		return new_v;
 	};
-	
+
+	auto copy_halfedge = [this](HalfedgeRef source) {
+		HalfedgeRef new_he = emplace_fulledge();
+		interpolate_data({source}, new_he);
+		interpolate_data({source->twin}, new_he->twin);
+		return new_he;
+	};
+
 	size_t sides1=0;
 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
 		halfedges.push_back(h);
 		new_vertices.push_back(copy_vertex(hOrig->vertex));
-		HalfedgeRef new_he = emplace_fulledge();
-		interpolate_data({hOrig}, new_he);
-		new_halfedges.push_back(new_he);
+		new_halfedges.push_back(copy_halfedge(hOrig));
 		sides1++;
 	}
 
@@ -446,9 +451,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	for ( h = h->twin->next; h != hOrig; h = h->twin->next) {
 		halfedges.push_back(h);
 		new_vertices.push_back(copy_vertex(hOrig->vertex));
-		HalfedgeRef new_he = emplace_fulledge();
-		interpolate_data({hOrig}, new_he);
-		new_halfedges.push_back(new_he);
+		new_halfedges.push_back(copy_halfedge(hOrig));
 	}
 
 	size_t sides =  new_vertices.size();
