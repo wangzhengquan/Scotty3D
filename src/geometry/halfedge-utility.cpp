@@ -696,6 +696,7 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	// mesh.next_halfedge_id = next_halfedge_id;
 	// mesh.next_face_id = next_face_id;
 	// mesh.next_vertex_id = next_vertex_id;
+
 	// Copy geometry from the original mesh and create a map from
 	// pointers in the original mesh to those in the new mesh.
 	for (VertexCRef v = vertices.begin(); v != vertices.end(); v++) {

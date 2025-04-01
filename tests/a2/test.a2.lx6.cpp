@@ -1,6 +1,6 @@
 #include "test.h"
 #include "geometry/halfedge.h"
-
+#include <iostream>
 #include <set>
 
 static void expect_bevel_edge(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, Vec3 dir, float dist, Halfedge_Mesh const &after) {
@@ -36,8 +36,10 @@ static void expect_bevel_edge(Halfedge_Mesh& mesh, Halfedge_Mesh::EdgeRef edge, 
 	} while (he != heOrig);
 	old_vert_connect.erase(edge->halfedge->vertex->id);
 	old_vert_connect.erase(edge->halfedge->twin->vertex->id);
-
+// std::cout << "\nedge:" << edge->id << std::endl;
+// std::cout << "\nbefore:\n" << mesh << std::endl;
 	if (auto ret = mesh.bevel_edge(edge)) {
+// std::cout << "\nafter:\n" << mesh << std::endl;
     Halfedge_Mesh::FaceRef face = ret.value();
 		if (auto msg = mesh.validate()) {
 			throw Test::error("Invalid mesh: " + msg.value().second);
