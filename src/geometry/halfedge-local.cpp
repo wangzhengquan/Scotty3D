@@ -713,7 +713,9 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face)
 	face->boundary = true;
 	setFace(face);
 	if(holes < 2) {
-		erase_face(orig_boundary_face);
+		if(orig_boundary_face != faces.end()) {
+			erase_face(orig_boundary_face);
+		}
 		for (auto v : erased_vertices) {
 			erase_vertex(v);
 		}
@@ -1034,7 +1036,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
  */
 std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::weld_edges(EdgeRef e, EdgeRef e2) {
 	//A2Lx8: Weld Edges
-
 	//Reminder: use interpolate_data() to merge bone_weights data on vertices!
 	if(!e->on_boundary() || !e2->on_boundary()) {	
  	 return std::nullopt;
