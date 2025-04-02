@@ -513,7 +513,11 @@ std::optional<std::string> Test::differs(Halfedge_Mesh const &source, Halfedge_M
 
 	std::unordered_set<uint32_t> e_target_ids;
 	std::unordered_set<uint32_t> e_source_ids;
-
+	auto describe_edge = [](EdgeCRef e) { 
+		VertexCRef v0 = e->halfedge->vertex;
+		VertexCRef v1 = e->halfedge->twin->vertex;
+		return "[e" + std::to_string(e->id)+"]: [v" + std::to_string(v0->id) + "]" + to_string(v0->position) + " -> [v" + std::to_string(v1->id) + "]" + to_string(v1->position); 
+	};
 	for (EdgeCRef e = source.edges.begin(); e != source.edges.end(); e++) {
 
 		uint32_t id0 = e->halfedge->vertex->id;
@@ -535,7 +539,7 @@ std::optional<std::string> Test::differs(Halfedge_Mesh const &source, Halfedge_M
 			h = h->twin->next;
 		} while (h != v0->halfedge);
 
-		if (!found) return "Source edge set is not a subset of target edge set!";
+		if (!found) return "Source edge set (" + describe_edge(e) + ") is not a subset of target edge set!";
 	}
 
 	for (EdgeCRef e = target.edges.begin(); e != target.edges.end(); e++) {

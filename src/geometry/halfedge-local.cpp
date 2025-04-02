@@ -140,7 +140,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::bisect_edge(EdgeRef e) {
 	//
 	// after:
 	//    --h->    --h2->
-	// v1 --e2-- vm --e-- v2
+	// v1 --e-- vm --e2-- v2
 	//    <-t2-    <--t--
 	//
 
@@ -163,40 +163,54 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::bisect_edge(EdgeRef e) {
 
 	HalfedgeRef t2 = emplace_halfedge();
 	interpolate_data({t, t->next}, t2); //set corner_uv, corner_normal
+
+	// The following elements aren't necessary for the bisect_edge, but they are here to demonstrate phase 4
+	// FaceRef f_not_used = emplace_face();
+	// HalfedgeRef h_not_used = emplace_halfedge();
+
 	// Phase 3: Reassign connectivity (careful about ordering so you don't overwrite values you may need later!)
 
 	vm->halfedge = h2;
-	e2->halfedge = t2;
-	e->halfedge = h2;
+
+	e2->halfedge = h2;
+
+	assert(e->halfedge == h); //unchanged
 
 	//n.b. h remains on the same face so even if h->face->halfedge == h, no fixup needed (t, similarly)
 
 	h2->twin = t;
 	h2->next = h->next;
 	h2->vertex = vm;
-	h2->edge = e;
+	h2->edge = e2;
 	h2->face = h->face;
 
 	t2->twin = h;
 	t2->next = t->next;
 	t2->vertex = vm;
-	t2->edge = e2;
+	t2->edge = e;
 	t2->face = t->face;
 	
 	h->twin = t2;
 	h->next = h2;
-	h->edge = e2;
 	assert(h->vertex == v1); // unchanged
+	assert(h->edge == e); // unchanged
 	//h->face unchanged
 
 	t->twin = h2;
 	t->next = t2;
 	assert(t->vertex == v2); // unchanged
-	t->edge = e;
+	t->edge = e2;
 	//t->face unchanged
 
+
+	// Phase 4: Delete unused elements
+	// erase_face(f_not_used);
+	// erase_halfedge(h_not_used);
+
+	// Phase 5: Return the correct iterator
 	return vm;
 }
+
 
 
 /*
@@ -651,7 +665,6 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::make_boundary(FaceRef face) {
 	//A2Lx7: (OPTIONAL) make_boundary
-
 	// Check if face is already a boundary face
 	if (face->boundary) {
 			return std::nullopt; // Can't make a boundary face into a boundary face

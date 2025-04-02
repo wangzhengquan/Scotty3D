@@ -1,10 +1,10 @@
 
 #include "test.h"
 #include "geometry/halfedge.h"
-
+#include <iostream>
 #include <unordered_set>
 
-static void expect_loop(Halfedge_Mesh& mesh, Halfedge_Mesh const &after) {
+static void expect_loop(Halfedge_Mesh& mesh, Halfedge_Mesh const &expect) {
 	size_t numVerts = mesh.vertices.size();
 	size_t numEdges = mesh.edges.size();
 	size_t numFaces = mesh.faces.size();
@@ -36,7 +36,9 @@ static void expect_loop(Halfedge_Mesh& mesh, Halfedge_Mesh const &after) {
 		}
 
 		// check mesh shape:
-		if (auto diff = Test::differs(mesh, after)) {
+		if (auto diff = Test::differs(mesh, expect)) {
+			std::cout << "\nmesh: " << mesh.describe() << std::endl;
+			std::cout << "\nexpect: " << expect.describe() << std::endl;
 			throw Test::error("Result does not match expected: " + diff.value());
 		}
 
