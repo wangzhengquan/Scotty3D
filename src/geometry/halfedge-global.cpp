@@ -300,7 +300,6 @@ bool Halfedge_Mesh::loop_subdivide() {
 			flip_edge(e);
 		}
 	}
-    //std::unordered_map< VertexRef, Vec3 > vertex_new_pos;
   // Finally, copy new vertex positions into the Vertex::position.
 	for (auto &[v, p]: vertex_new_pos){
 		v->position = p;
