@@ -883,12 +883,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	}
 
 	if (degree < 3) {
-		std::cout << "----end 1" << std::endl;
 		return std::nullopt;
 	}
 // std::cout << "degree1:" << degree1  << " degree2:" << degree2  << std::endl;
 	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
-		std::cout << "----end 2" << std::endl;
 		return std::nullopt;
 	}
 	 
@@ -908,7 +906,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	// Update the vertex pointers for the surrounding halfedges
 	size_t i = 0;
 	for (HalfedgeRef he : vertex_halfedges) {
-	// std::cout << "----3" << std::endl;
 		he->vertex = vm;
 		if(i ==0) {
 			vm->halfedge = he;
