@@ -2,7 +2,6 @@
 
 #include <unordered_map>
 #include <unordered_set>
-
 #include <iostream>
 
 
@@ -203,7 +202,6 @@ bool Halfedge_Mesh::loop_subdivide() {
 	//if execution reaches this point, all non-boundary faces are triangular, so proceed to subdivide:
 
 	// A2Go1: Loop subdivision.
-	// Optional! Only one of {A2Go1, A2Go2, A2Go3} is required!
 
 	// Each vertex and edge of the original mesh can be associated with a
 	// vertex in the new (subdivided) mesh. Therefore, our strategy for
@@ -292,7 +290,6 @@ bool Halfedge_Mesh::loop_subdivide() {
 	// Now flip any new edge that connects a new and old vertex.
 	// To check if a vertex is new, you can use a simple helper 'is_new' that
 	// checks if has an entry in vertex_new_pos:
-	
 	for (EdgeRef e : new_edges) {
 		HalfedgeRef h = e->halfedge;
 		HalfedgeRef t = h->twin;
@@ -310,33 +307,84 @@ bool Halfedge_Mesh::loop_subdivide() {
 //isotropic_remesh: improves mesh quality through local operations.
 // Do note that this requires a working implementation of EdgeSplit, EdgeFlip, and EdgeCollapse
 void Halfedge_Mesh::isotropic_remesh(Isotropic_Remesh_Parameters const &params) {
-
 	//A2Go2: Isotropic Remeshing
-	// Optional! Only one of {A2Go1, A2Go2, A2Go3} is required!
-
+std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_iterations << std::endl;
 	// Compute the mean edge length. This will be the "target length".
-
-    // Repeat the four main steps for `outer_iterations` iterations:
-
-    // -> Split edges much longer than the target length.
-	//     ("much longer" means > target length * params.longer_factor)
-
-    // -> Collapse edges much shorter than the target length.
-	//     ("much shorter" means < target length * params.shorter_factor)
-
-    // -> Flip each edge if it improves vertex degree.
-
-    // -> Finally, apply some tangential smoothing to the vertex positions.
-	//     This means move every vertex in the plane of its normal,
-	//     toward the centroid of its neighbors, by params.smoothing_step of
-	//     the total distance (so, smoothing_step of 1 would move all the way,
-	//     smoothing_step of 0 would not move).
-	// -> Repeat the tangential smoothing part params.smoothing_iterations times.
-
-	//NOTE: many of the steps in this function will be modifying the element
-	//      lists they are looping over. Take care to avoid use-after-free
-	//      or infinite-loop problems.
-
+	float L = 0;
+	// std::cout << "i=" << i << ",params.smoothing_iterations=" << params.smoothing_iterations << std::endl;
+	for (EdgeRef e = edges.begin(); e != edges.end(); ++e) {
+		L += e->length();
+	}
+	L /= edges.size();
+  // Repeat the four main steps for `outer_iterations` iterations:
+	for (uint32_t i = 0; i < params.outer_iterations; i++) {
+		// -> Split edges much longer than the target length.
+		//     ("much longer" means > target length * params.longer_factor)
+		EdgeRef last_old_edge = std::prev(edges.end());
+		for (EdgeRef e = edges.begin(); e != std::next(last_old_edge); ++e) {
+			if (e->length() > L * params.longer_factor) {
+				split_edge(e);
+			}
+		}
+		// -> Collapse edges much shorter than the target length.
+		//     ("much shorter" means < target length * params.shorter_factor)
+		std::vector< EdgeRef > edges_to_collapse;
+		for (EdgeRef e = edges.begin(); e != edges.end(); ++e) {
+			if (e->length() < L * params.shorter_factor) {
+				edges_to_collapse.push_back(e);
+			}
+		}
+		size_t c = 0;
+// std::cout << "Collapsing edges size: " << edges_to_collapse.size() << std::endl;
+		for (EdgeRef e : edges_to_collapse) {
+// std::printf("edge: %ld id=%x, erased=%d\n", c, e->id, is_erased(e));
+			if (!is_erased(e)) {
+				collapse_edge(e);  
+			}
+			c++;
+		}
+		// -> Flip each edge if it improves vertex degree.
+		for (EdgeRef e = edges.begin(); e != edges.end(); ++e) {
+			HalfedgeRef h = e->halfedge;
+			HalfedgeRef t = h->twin;
+			VertexRef va = h->vertex;
+			VertexRef vb = t->vertex;
+			VertexRef vc = h->next->twin->vertex;
+			VertexRef vd = t->next->twin->vertex;
+			int da = va->degree();
+			int db = vb->degree();
+			int dc = vc->degree();
+			int dd = vd->degree();
+			if (std::abs(da-6) + std::abs(db-6) + std::abs(dc-6) + std::abs(dd-6) > std::abs(da-1-6) + std::abs(db-1-6) + std::abs(dc+1-6) + std::abs(dd+1-6)) {
+				flip_edge(e);
+			}
+		}
+		
+		// -> Finally, apply some tangential smoothing to the vertex positions.
+		//     This means move every vertex in the plane of its normal,
+		//     toward the centroid of its neighbors, by params.smoothing_step of
+		//     the total distance (so, smoothing_step of 1 would move all the way,
+		//     smoothing_step of 0 would not move).
+		// -> Repeat the tangential smoothing part params.smoothing_iterations times.
+		
+		for(uint32_t j = 0; j < params.smoothing_iterations; j++){
+// std::cout << "j=" << j << std::endl;
+			std::unordered_map<VertexRef, Vec3> vertices_new_position;
+			for(VertexRef vertex = vertices.begin(); vertex < vertices.end(); vertex++) {
+				Vec3 p = vertex->position;
+				Vec3 c = vertex->neighborhood_center();
+				Vec3 norm = vertex->normal();
+				Vec3 v = c - p;
+				v = v - dot(norm, v) * norm;
+				Vec3 new_pos = p + params.smoothing_step * v;
+				vertices_new_position.emplace(vertex, new_pos);
+			}
+			for (auto&[v, p]: vertices_new_position) {
+				v->position = p;
+			}
+		}
+		 
+	}
 }
 
 struct Edge_Record {

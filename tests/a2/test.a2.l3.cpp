@@ -1,14 +1,19 @@
 #include "test.h"
 #include "geometry/halfedge.h"
+#include <iostream>
 
-static void expect_collapse(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &after) {
+static void expect_collapse(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &expect) {
+
 	if (auto ret = mesh.collapse_edge(edge)) {
 		if (auto msg = mesh.validate()) {
 			throw Test::error("Invalid mesh: " + msg.value().second);
 		}
 		// check mesh shape:
-		if (auto difference = Test::differs(mesh, after, Test::CheckAllBits)) {
+		if (auto difference = Test::differs(mesh, expect, Test::CheckAllBits)) {
+			std::cout << "\nexpect:\n" << expect.describe() << std::endl;
 			throw Test::error("Resulting mesh did not match expected: " + *difference);
+
+		
 		}
 	} else {
 		throw Test::error("collapse_edge rejected operation!");
@@ -79,8 +84,9 @@ Test test_a2_l3_collapse_edge_basic_simple2("a2.l3.collapse_edge.basic.simple2",
 		{0, 1, 2},
 	});
 
-	// Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
-
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->edge;
+ 	auto ret = mesh.collapse_edge(edge);
+	assert(!ret);
 	// Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
 	// 	Vec3(0.0f, 2.0f, 0.0f),
 	// 	Vec3(0.05f, 1.0f, 0.0f),
@@ -237,27 +243,76 @@ After mesh:
 3--4
 */
 Test test_a2_l3_collapse_edge_edge_boundary2("a2.l3.collapse_edge.edge.boundary2", []() {
-	// Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
-	// 	Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
-	// 	                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
-	// 	Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
-	// }, {
-	// 	{1, 2, 3}, 
-	// 	{0, 2, 1}, 
-	// 	{0, 4, 5, 2}, 
-	// 	{2, 5, 3}
-	// });
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  Vec3(2.3f, 0.0f, 0.0f),
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{1, 2, 3}, 
+		{0, 2, 1}, 
+		{0, 4, 5, 2}, 
+		{2, 5, 3}
+	});
 
-	// Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->edge;
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->edge;
 
-	// Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
-	// 	Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
-	// 	                             Vec3(1.75f, 0.0f, 0.0f), 
-	// 	Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
-	// }, {
-	// 	{0, 2, 1}, 
-	// 	{0, 3, 4, 2}
-	// });
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                             Vec3(1.75f, 0.0f, 0.0f), 
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 3, 4, 2}
+	});
 
-	// expect_collapse(mesh, edge, after);
+	expect_collapse(mesh, edge, after);
 });
+
+Test test_a2_l3_collapse_edge_complex1("a2.l3.collapse_edge.complex1", []() {
+
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+							Vec3(-0.45f, 0.825f, 0.0f), 
+													Vec3(1.15f, 0.5f, 0.0f),
+		 Vec3(-0.75f, -0.525f, 0.0f), 						
+		 Vec3(-1.0f, -1.0f, 0.0f),  Vec3(1.0f, -1.0f, 0.0f)
+																			
+	}, {
+		{0, 2, 1}, 
+		{2, 4, 1}, 
+		{2, 3, 4}
+	});
+
+ 
+
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+																edge->center(),
+		Vec3(-0.75f, -0.525f, 0.0f), 						
+		Vec3(-1.0f, -1.0f, 0.0f),  Vec3(1.0f, -1.0f, 0.0f)
+	}, {
+		{0, 1, 3}, 
+		{1, 2, 3}
+	});
+
+	expect_collapse(mesh, edge, after);
+});
+
+Test test_a2_l3_collapse_edge_repeat("a2.l3.collapse_edge.repeat", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+		                         Vec3(1.2f, 0.0f, 0.0f),  
+		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+	}, {
+		{0, 2, 1}, 
+		{0, 3, 2}, 
+		{1, 2, 4}, 
+		{2, 3, 4}
+	});
+	Halfedge_Mesh::Isotropic_Remesh_Parameters params;
+	mesh.isotropic_remesh(params);
+	 
+
+	 
+});
+

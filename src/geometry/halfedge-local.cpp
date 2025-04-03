@@ -848,10 +848,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	//A2L3: Collapse Edge
 	//Reminder: use interpolate_data() to merge corner_uv / corner_normal data on halfedges
 	// (also works for bone_weights data on vertices!)
-	std::unordered_map< std::pair< Index, Index >, HalfedgeRef > halfedgesMap; //for quick lookup of halfedges by from/to vertex index
-	std::set<FaceRef> facesToErase;
-	std::set<HalfedgeRef> halfedgesToErase;
-	std::set<EdgeRef> edgesToErase;
+	if(is_erased(e)) {
+		return std::nullopt;
+	}
+ 
 	// Collect the necessary halfedges
 	HalfedgeRef h1 = e->halfedge;
 	HalfedgeRef h2 = h1->twin;
@@ -864,114 +864,95 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	FaceRef f1 = h1->face;
 	FaceRef f2 = h2->face;
 
+	// Collect the necessary halfedges around v1 and v2
+	std::vector<HalfedgeRef> vertex_halfedges;
+
+	bool v1_hasBoundryHalfedge = false, v2_hasBoundryHalfedge = false;
+  size_t  degree = 0;
+ 
+	for (HalfedgeRef h = h1->twin->next; h != h1; h = h->twin->next) {
+			vertex_halfedges.push_back(h);
+			v1_hasBoundryHalfedge = v1_hasBoundryHalfedge || h->face->boundary;
+			degree++;
+	}
+	 
+	for (HalfedgeRef h = h2->twin->next; h != h2; h = h->twin->next) {
+		vertex_halfedges.push_back(h);
+		v2_hasBoundryHalfedge = v2_hasBoundryHalfedge || h->face->boundary;
+		degree++;
+	}
+
+	if (degree < 3) {
+		std::cout << "----end 1" << std::endl;
+		return std::nullopt;
+	}
+// std::cout << "degree1:" << degree1  << " degree2:" << degree2  << std::endl;
+	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
+		std::cout << "----end 2" << std::endl;
+		return std::nullopt;
+	}
+	 
+	// ============== begin to update =========================
+
 	// Create a new vertex at the midpoint of the edge
 	VertexRef vm = emplace_vertex();
 	vm->position = (v1->position + v2->position) / 2.0f;
 	interpolate_data({v1, v2}, vm); // Interpolate bone weights
+ 
 
-	halfedgesToErase.emplace(h1);
-	halfedgesToErase.emplace(h2);
-	edgesToErase.emplace(e);
-
+	prev(h1)->next = h1->next;
+	prev(h2)->next = h2->next;
 	f1->halfedge = h1->next;
 	f2->halfedge = h2->next;
 
-	// Collect the necessary halfedges around v1 and v2
-	std::vector<HalfedgeRef> v1_halfedges;
-	std::vector<HalfedgeRef> v2_halfedges;
-
-	HalfedgeRef h = v1->halfedge;
-	bool v1_hasBoundryHalfedge = false, v2_hasBoundryHalfedge = false;
-	do {
-			v1_halfedges.push_back(h);
-			v1_hasBoundryHalfedge = v1_hasBoundryHalfedge || h->face->boundary;
-			h = h->twin->next;
-	} while (h != v1->halfedge);
-
-	h = v2->halfedge;
-	do {
-			v2_halfedges.push_back(h);
-			v2_hasBoundryHalfedge = v2_hasBoundryHalfedge || h->face->boundary;
-			h = h->twin->next;
-	} while (h != v2->halfedge);
-
-	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
-		return std::nullopt;
-	}
-	 
 	// Update the vertex pointers for the surrounding halfedges
-	for (HalfedgeRef he : v1_halfedges) {
-		assert(he->vertex == v1);
+	size_t i = 0;
+	for (HalfedgeRef he : vertex_halfedges) {
+	// std::cout << "----3" << std::endl;
 		he->vertex = vm;
-		auto line = std::make_pair(he->vertex->id, he->twin->vertex->id);
-		halfedgesMap.emplace(line, he);
-		if (he->twin->next == h1) {
-			he->twin->next = he->twin->next->next;
-		}
-	}
-
-	for (HalfedgeRef he : v2_halfedges) {
-		assert(he->vertex == v2);
-		he->vertex = vm;
-		auto line = std::make_pair(he->vertex->id, he->twin->vertex->id);
-		auto colineHe = halfedgesMap.find(line);
-		if(colineHe != halfedgesMap.end()) {
-			if(colineHe->second->face == f2) {
-				facesToErase.emplace(f2);
-				halfedgesToErase.emplace(colineHe->second);
-				halfedgesToErase.emplace(he->twin);
-				edgesToErase.emplace(colineHe->second->edge);
-
-				he->twin->vertex->halfedge = colineHe->second->twin;
-
-				he->edge->halfedge = he;
-				he->twin = colineHe->second->twin;
-				he->twin->edge = he->edge;
-				he->twin->twin = he;
-				
-				halfedgesMap.insert_or_assign(line, he);
-			} else if (he->face == f1) {
-				facesToErase.emplace(f1);
-				halfedgesToErase.emplace(colineHe->second->twin);
-				halfedgesToErase.emplace(he);
-				edgesToErase.emplace(he->edge);
-				colineHe->second->twin->vertex->halfedge = he->twin;
-				
-				colineHe->second->edge->halfedge = colineHe->second;
-				colineHe->second->twin = he->twin;
-				colineHe->second->twin->edge = colineHe->second->edge;
-				colineHe->second->twin->twin = colineHe->second;
-			}
-		} else {
-			if (he->twin->next == h2) {
-				he->twin->next = he->twin->next->next;
-			}
-		}
-	}
-
-	for (HalfedgeRef he : v1_halfedges){
-		// std::cout << he->id<< ":" << halfedgesToErase.count(he) <<std::endl;
-		if (halfedgesToErase.count(he) == 0) {
+		if(i ==0) {
 			vm->halfedge = he;
-			break;
 		}
+		i++;
 	}
-	 
-	// Remove the collapsed elements
-	for (FaceRef f: facesToErase){
+ 
+	auto remove_invalid_face = [this](FaceRef f) {
+		HalfedgeRef he1 = f->halfedge;
+		HalfedgeRef he2 = he1->next;
+		he1->twin->twin = he2->twin;
+		he2->twin->twin = he1->twin;
+		he2->twin->edge = he1->edge;
+		he1->edge->halfedge = he1->twin;
+		he1->vertex->halfedge = he1->twin->next;
+		he2->vertex->halfedge = he2->twin->next;
+		erase_edge(he2->edge);
+		erase_halfedge(he1);
+		erase_halfedge(he2);
 		erase_face(f);
-	}
-	for (auto h: halfedgesToErase){
-		erase_halfedge(h);
-	}
-	for (auto e: edgesToErase){
-		erase_edge(e);
-	}
-	
+	};
+
+	if(f1->degree() < 3) {
+		remove_invalid_face(f1);
+	}  
+
+	if(f2->degree() < 3) {
+		remove_invalid_face(f2);
+	}  
+ 
 	erase_vertex(v1);
 	erase_vertex(v2);
-
+	erase_fulledge(h1);
+// std::cout << "----end" << std::endl;
 	// Return the newly created vertex
+if (auto msg = validate()) {
+	// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
+	std::cout << "mesh is invalid after collapse: " << msg.value().second << std::endl;
+	// std::cout << describe() << std::endl;
+	// std::cout << describe2() << std::endl;
+	exit(1);
+	return std::nullopt;
+}
+
 	return vm;
 }
 

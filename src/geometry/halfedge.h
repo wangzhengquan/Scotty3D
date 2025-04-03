@@ -259,6 +259,7 @@ public:
 		Vec3 center() const; // The midpoint of the edge
 		Vec3 normal() const; // The average of the face normals on either side of this edge
 		float length() const; // The length of the edge
+		std::string to_string() const; // A string representation of the edge
 
 	private:
 		Edge(uint32_t id_, bool sharp_) : id(id_), sharp(sharp_) { }
@@ -401,6 +402,7 @@ public:
 
 	//a multi-line description of the mesh, suitable for debug output (works on invalid meshes)
 	std::string describe() const;
+	std::string describe2() const;
 
 	//--- validation ---
 
@@ -477,12 +479,16 @@ public:
 
 	// get properties of generic elements (used by GUI):
 	static uint32_t id_of(ElementCRef elem);
+	static bool is_erased(ElementCRef elem);
 	static Vec3 normal_of(ElementCRef elem);
 	static Vec3 center_of(ElementCRef elem);
+	
 
 	static uint32_t id_of(ElementRef elem);
+	// static bool is_erased(ElementRef elem);
 	static Vec3 normal_of(ElementRef elem);
 	static Vec3 center_of(ElementRef elem);
+	
 
 	//helper for when you have an element reference and want a const element reference:
 	static ElementCRef const_from(ElementRef elem);
@@ -523,11 +529,11 @@ private:
 		return target;
 	}
 	//a fresh element id; assigned + incremented by emplace_*() functions:
-	uint32_t next_id = 0;
-	// uint32_t next_edge_id = 0;
-	// uint32_t next_halfedge_id = 0;
-	// uint32_t next_face_id = 0;
-	// uint32_t next_vertex_id = 0;
+	// uint32_t next_id = 0;
+	uint32_t next_edge_id = 0;
+	uint32_t next_halfedge_id = 0;
+	uint32_t next_face_id = 0;
+	uint32_t next_vertex_id = 0;
 
 	//free lists used by the erase() and emplace_*() functions:
 	std::list<Vertex> free_vertices;

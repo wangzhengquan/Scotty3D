@@ -49,12 +49,12 @@ Halfedge_Mesh::VertexRef Halfedge_Mesh::emplace_vertex() {
 	VertexRef vertex;
 	if (free_vertices.empty()) {
 		//allocate a new vertex:   next_vertex_id
-		vertex = vertices.emplace(vertices.end(), Vertex(next_id++));
+		vertex = vertices.emplace(vertices.end(), Vertex(next_vertex_id++));
 	} else {
 		//recycle vertex from free list:
 		vertex = free_vertices.begin();
 		vertices.splice(vertices.end(), free_vertices, free_vertices.begin());
-		*vertex = Vertex(next_id++); //set to default values
+		*vertex = Vertex(next_vertex_id++); //set to default values
 	}
 	//make sure vertex doesn't reference anything:
 	vertex->halfedge = halfedges.end();
@@ -65,12 +65,12 @@ Halfedge_Mesh::EdgeRef Halfedge_Mesh::emplace_edge(bool sharp) {
 	EdgeRef edge;
 	if (free_edges.empty()) {
 		//allocate a new edge: next_edge_id
-		edge = edges.emplace(edges.end(), Edge(next_id++, sharp));
+		edge = edges.emplace(edges.end(), Edge(next_edge_id++, sharp));
 	} else {
 		//recycle edge from free list:
 		edge = free_edges.begin();
 		edges.splice(edges.end(), free_edges, free_edges.begin());
-		*edge = Edge(next_id++, sharp); //set to default values
+		*edge = Edge(next_edge_id++, sharp); //set to default values
 	}
 	//make sure edge doesn't reference anything:
 	edge->halfedge = halfedges.end();
@@ -81,12 +81,12 @@ Halfedge_Mesh::FaceRef Halfedge_Mesh::emplace_face(bool boundary) {
 	FaceRef face;
 	if (free_faces.empty()) {
 		//allocate a new face: next_face_id
-		face = faces.emplace(faces.end(), Face(next_id++, boundary));
+		face = faces.emplace(faces.end(), Face(next_face_id++, boundary));
 	} else {
 		//recycle face from free list:
 		face = free_faces.begin();
 		faces.splice(faces.end(), free_faces, free_faces.begin());
-		*face = Face(next_id++, boundary); //set to default values
+		*face = Face(next_face_id++, boundary); //set to default values
 	}
 	face->halfedge = halfedges.end();
 	return face;
@@ -98,10 +98,10 @@ Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::emplace_halfedge() {
 		//move from free list: next_halfedge_id
 		halfedge = free_halfedges.begin();
 		halfedges.splice(halfedges.end(), free_halfedges, free_halfedges.begin());
-		*halfedge = Halfedge(next_id++); //set to default values
+		*halfedge = Halfedge(next_halfedge_id++); //set to default values
 	} else {
 		//allocate a new halfedge:
-		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_id++));
+		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_halfedge_id++));
 	}
 	//set pointers to default values:
 	halfedge->twin = halfedges.end();
@@ -137,6 +137,7 @@ void Halfedge_Mesh::erase_vertex(VertexRef v) {
 
 void Halfedge_Mesh::erase_edge(EdgeRef e) {
 	//clear data:
+// std::printf("erase edge %x, %x\n", e->id, e->id | 0x80000000u);
 	e->id |= 0x80000000u;
 	e->sharp = false;
 
@@ -321,6 +322,12 @@ Vec3 Halfedge_Mesh::Edge::center() const {
 	return 0.5f * (halfedge->vertex->position + halfedge->twin->vertex->position);
 }
 
+std::string Halfedge_Mesh::Edge::to_string() const {
+	std::ostringstream ss;
+	ss << "[e" << id << "] " << "v" << halfedge->vertex->id << "-" << "v" << halfedge->twin->vertex->id;
+	return ss.str();
+}
+
 Vec3 Halfedge_Mesh::Face::center() const {
 	Vec3 c;
 	float d = 0.0f;
@@ -336,6 +343,10 @@ Vec3 Halfedge_Mesh::Face::center() const {
 
 uint32_t Halfedge_Mesh::id_of(ElementCRef elem) {
 	return std::visit( [&](auto ref) -> uint32_t { return ref->id; }, elem );
+}
+
+bool Halfedge_Mesh::is_erased(ElementCRef elem) {
+	return std::visit( [&](auto ref) -> bool { return (id_of(elem) & 0x80000000u) == 0x80000000u; }, elem );
 }
 
 Vec3 Halfedge_Mesh::normal_of(Halfedge_Mesh::ElementCRef elem) {
@@ -360,6 +371,7 @@ Vec3 Halfedge_Mesh::center_of(Halfedge_Mesh::ElementCRef elem) {
 
 
 uint32_t Halfedge_Mesh::id_of(ElementRef elem) { return id_of(const_from(elem)); }
+// bool Halfedge_Mesh::is_erased(ElementRef elem) { return is_erased(const_from(elem)); }
 Vec3 Halfedge_Mesh::center_of(ElementRef elem) { return center_of(const_from(elem)); }
 Vec3 Halfedge_Mesh::normal_of(ElementRef elem) { return normal_of(const_from(elem)); }
 
@@ -450,6 +462,26 @@ std::string Halfedge_Mesh::describe() const {
 		oss << "  [f" << f.id << "] " << desc_halfedge(f.halfedge) << " " << (f.boundary ? "B": "N" ) << "\n";
 	}
 
+	return oss.str();
+}
+
+std::string Halfedge_Mesh::describe2() const {
+	std::ostringstream oss;
+	oss << "Mesh with " << halfedges.size() << " halfedges, " << vertices.size() << " vertices, " << edges.size() << " edges, and " << faces.size() << " faces:\n";
+	oss << "vertices: \n";
+	for (auto const &v : vertices) {
+		oss << "v" << v.id << " " << v.position << std::endl;
+	}
+	oss << "faces: \n";
+	for (auto const &f : faces) {
+		oss << "f" << f.id << " {";
+		HalfedgeCRef h = f.halfedge;
+		do {
+			oss << h->vertex->id << ",";
+			h = h->next;
+		} while (h != f.halfedge);
+		oss << "}\n";
+	}
 	return oss.str();
 }
 
@@ -691,11 +723,11 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	Halfedge_Mesh mesh;
 
 	//new mesh should also have the same next_id as this one:
-	mesh.next_id = next_id;
-	// mesh.next_edge_id = next_edge_id;
-	// mesh.next_halfedge_id = next_halfedge_id;
-	// mesh.next_face_id = next_face_id;
-	// mesh.next_vertex_id = next_vertex_id;
+	// mesh.next_id = next_id;
+	mesh.next_edge_id = next_edge_id;
+	mesh.next_halfedge_id = next_halfedge_id;
+	mesh.next_face_id = next_face_id;
+	mesh.next_vertex_id = next_vertex_id;
 
 	// Copy geometry from the original mesh and create a map from
 	// pointers in the original mesh to those in the new mesh.
