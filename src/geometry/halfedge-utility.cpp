@@ -267,6 +267,12 @@ float Halfedge_Mesh::Vertex::gaussian_curvature() const {
 	return defect / area;
 }
 
+std::string Halfedge_Mesh::Vertex::to_string() const {
+	std::ostringstream ss;
+	ss << "[v" << id << "]: " << position;
+	return ss.str();
+}
+
 
 float Halfedge_Mesh::Face::area() const {
 	float a = 0.0f;
@@ -290,6 +296,17 @@ uint32_t Halfedge_Mesh::Face::degree() const {
 		h = h->next;
 	} while (h != halfedge);
 	return d;
+}
+
+std::string Halfedge_Mesh::Face::to_string() const {
+	std::ostringstream ss;
+	ss << "[f" << id << "]: " << (boundary ? "B" : "N") << " ";
+	HalfedgeCRef h = halfedge;
+	do {
+		ss << "v" << h->vertex->id << "-h"<< h->id <<"-> ";
+		h = h->next;
+	} while (h != halfedge);
+	return ss.str();
 }
 
 bool Halfedge_Mesh::Edge::on_boundary() const {
@@ -470,17 +487,11 @@ std::string Halfedge_Mesh::describe2() const {
 	oss << "Mesh with " << halfedges.size() << " halfedges, " << vertices.size() << " vertices, " << edges.size() << " edges, and " << faces.size() << " faces:\n";
 	oss << "vertices: \n";
 	for (auto const &v : vertices) {
-		oss << "v" << v.id << " " << v.position << std::endl;
+		oss << v.to_string() << std::endl;
 	}
 	oss << "faces: \n";
 	for (auto const &f : faces) {
-		oss << "f" << f.id << " {";
-		HalfedgeCRef h = f.halfedge;
-		do {
-			oss << h->vertex->id << ",";
-			h = h->next;
-		} while (h != f.halfedge);
-		oss << "}\n";
+		oss << f.to_string() << std::endl;
 	}
 	return oss.str();
 }
@@ -701,7 +712,7 @@ std::optional<std::pair<Halfedge_Mesh::ElementCRef, std::string>> Halfedge_Mesh:
 
 		HalfedgeCRef h = f->halfedge;
 		do {
-			if (!touched_vertices.emplace(h->vertex).second) return {{f, describe_face(f) + " touches " + describe_vertex(h->vertex) + " more than once."}};
+			if (!touched_vertices.emplace(h->vertex).second) return {{f, describe_face(f) + " touches " + describe_vertex(h->vertex) + " more than once." + "face = " + f->to_string() }};
 			if (!touched_edges.emplace(h->edge).second) return {{f, describe_face(f) + " touches " + describe_edge(h->edge) + " more than once."}};
 
 			h = h->next;

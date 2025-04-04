@@ -42,7 +42,7 @@ check_for_nest();
 //set compile flags (these can also be overridden per-task using the "options" parameter):
 if (maek.OS === "windows") {
 	maek.options.CPPFlags.push(
-		"/O2", //optimize
+		// "/O2", //optimize
 		//include paths for pre-built libraries:
 		`/I${NEST_LIBS}/SDL2/include`,
 		//include directories:
@@ -56,13 +56,13 @@ if (maek.OS === "windows") {
 	);
 } else if (maek.OS === "linux") {
 	maek.options.CPPFlags.push(
-		"-O2", //optimize
+		// "-O2", //optimize
 		`-I${NEST_LIBS}/SDL2/include/SDL2`, `-D_THREAD_SAFE`, //SDL include flags
 		"-Isrc", "-Ideps"  //include directories
 	);
 } else if (maek.OS === "macos") {
 	maek.options.CPPFlags.push(
-		"-O2", //optimize
+		// "-O2", //optimize
 		`-I${NEST_LIBS}/SDL2/include/SDL2`, `-D_THREAD_SAFE`, //SDL include flags
 		"-Isrc", "-Ideps"  //include directories
 	);

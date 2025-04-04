@@ -211,8 +211,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::bisect_edge(EdgeRef e) {
 	return vm;
 }
 
-
-
 /*
  * split_edge: split an edge and adjacent (non-boundary) faces
  *  e: edge to split
@@ -867,25 +865,24 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	// Collect the necessary halfedges around v1 and v2
 	std::vector<HalfedgeRef> vertex_halfedges;
 
+	if (f1->degree() < 4 && h1->next->twin->vertex->degree() < 3) {
+		return std::nullopt;
+	}
+
+	if (f2->degree() < 4 && h2->next->twin->vertex->degree() < 3) {
+		return std::nullopt;
+	}
 	bool v1_hasBoundryHalfedge = false, v2_hasBoundryHalfedge = false;
-  size_t  degree = 0;
- 
 	for (HalfedgeRef h = h1->twin->next; h != h1; h = h->twin->next) {
 			vertex_halfedges.push_back(h);
 			v1_hasBoundryHalfedge = v1_hasBoundryHalfedge || h->face->boundary;
-			degree++;
 	}
 	 
 	for (HalfedgeRef h = h2->twin->next; h != h2; h = h->twin->next) {
 		vertex_halfedges.push_back(h);
 		v2_hasBoundryHalfedge = v2_hasBoundryHalfedge || h->face->boundary;
-		degree++;
 	}
-
-	if (degree < 3) {
-		return std::nullopt;
-	}
-// std::cout << "degree1:" << degree1  << " degree2:" << degree2  << std::endl;
+ 
 	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
 		return std::nullopt;
 	}
@@ -939,16 +936,14 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	erase_vertex(v1);
 	erase_vertex(v2);
 	erase_fulledge(h1);
-// std::cout << "----end" << std::endl;
-	// Return the newly created vertex
-if (auto msg = validate()) {
-	// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
-	std::cout << "mesh is invalid after collapse: " << msg.value().second << std::endl;
-	// std::cout << describe() << std::endl;
-	// std::cout << describe2() << std::endl;
-	exit(1);
-	return std::nullopt;
-}
+// if (auto msg = validate()) {
+// 	// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
+// 	std::cout << "mesh is invalid after collapse: " << msg.value().second << std::endl;
+// 	// std::cout << describe() << std::endl;
+// 	// std::cout << to_string() << std::endl;
+// 	exit(1);
+// 	return std::nullopt;
+// }
 
 	return vm;
 }

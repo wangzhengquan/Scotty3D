@@ -239,6 +239,7 @@ public:
 		Vec3 neighborhood_center() const; //center of adjacent vertices
 		float angle_defect() const; //difference between sum of adjacent face angles and 2pi
 		float gaussian_curvature() const; //product of principle curvatures
+		std::string to_string() const; // A string representation of the vertex
 
 	private:
 		Vertex(uint32_t id_) : id(id_) { }
@@ -280,6 +281,7 @@ public:
 		Vec3 normal() const; // area-weighted face normal
 		uint32_t degree() const; // number of vertices/edges in this face
 		float area() const; // area of this face
+		std::string to_string() const; // A string representation of the face
 
 	private:
 		Face(uint32_t id_, bool boundary_) : id(id_), boundary(boundary_) { }
