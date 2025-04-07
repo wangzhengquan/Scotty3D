@@ -216,9 +216,8 @@ Data pentagon(float r) {
 	         {Vec3{r * std::cos(1.f * 2.f * PI_F / 5), 0.0f, r * std::sin(1.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 1.0f}, 1},
 	         {Vec3{r * std::cos(2.f * 2.f * PI_F / 5), 0.0f, r * std::sin(2.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 0.0f}, 2},
 	         {Vec3{r * std::cos(3.f * 2.f * PI_F / 5), 0.0f, r * std::sin(3.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 1.0f}, 3},
-	         {Vec3{r * std::cos(4.f * 2.f * PI_F / 5), 0.0f, r * std::sin(4.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 1.0f}, 4},
-	         {Vec3{r * std::cos(5.f * 2.f * PI_F / 5), 0.0f, r * std::sin(5.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 1.0f}, 5}},
-	        {0, 1, 2, 0, 2, 3, 0, 3, 4}};
+	         {Vec3{r * std::cos(4.f * 2.f * PI_F / 5), 0.0f, r * std::sin(4.f * 2.f * PI_F / 5)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 1.0f}, 4}},
+	        {0, 2, 1, 0, 3, 2, 0, 4, 3}};
 }
 
 // https://wiki.unity3d.com/index.php/ProceduralPrimitives

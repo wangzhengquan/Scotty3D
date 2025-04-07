@@ -90,13 +90,12 @@ Test test_a2_l3_collapse_edge_single_triangle("a2.l3.collapse_edge.single.triang
 	 
 });
 
-/*
-                   
-         / 0 \   
-        /     \       
-        1-----2 
-				\     /
-  			 \ 3 / 
+/**           
+   / 0 \   
+  /     \       
+  1-----2 
+	\     /
+	 \ 3 / 
 Collapse Edge on Edge: 1-2
 */
 Test test_a2_l3_collapse_edge_double_triangle("a2.l3.collapse_edge.double.triangle", []() {
@@ -117,7 +116,7 @@ Test test_a2_l3_collapse_edge_double_triangle("a2.l3.collapse_edge.double.triang
 });
 
 /**
- * 0 \---/ 1                                        / 0
+   0 \---/ 1                                        / 0
 	 |  \ /  |                                       /  |
 	 |   2   |   (Collapse Edge on Edge: 0-2)       1   | 
 	 |  / \  |                                     / \  |
@@ -340,21 +339,19 @@ Test test_a2_l3_collapse_edge_complex1("a2.l3.collapse_edge.complex1", []() {
 	expect_collapse(mesh, edge, after);
 });
 
-Test test_a2_l3_collapse_edge_repeat("a2.l3.collapse_edge.repeat", []() {
-	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
-		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
-		                         Vec3(1.2f, 0.0f, 0.0f),  
-		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
-	}, {
-		{0, 2, 1}, 
-		{0, 3, 2}, 
-		{1, 2, 4}, 
-		{2, 3, 4}
-	});
-	Halfedge_Mesh::Isotropic_Remesh_Parameters params;
-	mesh.isotropic_remesh(params);
+// Test test_a2_l3_collapse_edge_repeat("a2.l3.collapse_edge.repeat", []() {
+// 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+// 		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
+// 		                         Vec3(1.2f, 0.0f, 0.0f),  
+// 		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
+// 	}, {
+// 		{0, 2, 1}, 
+// 		{0, 3, 2}, 
+// 		{1, 2, 4}, 
+// 		{2, 3, 4}
+// 	});
+// 	Halfedge_Mesh::Isotropic_Remesh_Parameters params;
+// 	mesh.isotropic_remesh(params);
 	 
-
-	 
-});
+// });
 

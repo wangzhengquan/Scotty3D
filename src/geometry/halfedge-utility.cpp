@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <iostream>
+#include "../lib/stacktrace.h"
+#include "../lib/log.h"
 
 void Halfedge_Mesh::interpolate_data(std::vector< VertexCRef > const &from, VertexRef to) {
 	assert(from.size() >= 1);
@@ -780,6 +782,7 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	return mesh;
 }
 
+
 Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &vertices_, 
 		std::vector< std::vector< Index > > const &faces_,
 		std::vector< std::vector< Index > > const &corner_normal_idxs,
@@ -789,7 +792,6 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 {
 
 	Halfedge_Mesh mesh;
-
 	std::vector< VertexRef > vertices; //for quick lookup of vertices by index
 	vertices.reserve(vertices_.size());
 	for (auto const &v : vertices_) {
@@ -910,6 +912,7 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 	//PARANOIA: this should never happen:
 	auto error = mesh.validate();
 	if (error) {
+		print_stacktrace();
 		std::cerr << "Halfedge_Mesh from_indexed_faces failed validation: " << error->second << std::endl;
 		assert(0);
 	}
