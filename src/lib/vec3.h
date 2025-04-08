@@ -235,7 +235,7 @@ inline std::string to_string(Vec3 const &v) {
 }
 
 inline std::ostream& operator<<(std::ostream& out, Vec3 v) {
-	out << "{" << v.x << "," << v.y << "," << v.z << "}";
+	out << "{" << v.x << "f, " << v.y << "f, " << v.z << "f}";
 	return out;
 }
 

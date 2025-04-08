@@ -861,26 +861,41 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	// Collect the necessary faces
 	FaceRef f1 = h1->face;
 	FaceRef f2 = h2->face;
+	f1->halfedge = h1;
+	f2->halfedge = h2;
 
 	// Collect the necessary halfedges around v1 and v2
 	std::vector<HalfedgeRef> vertex_halfedges;
 
-	if (f1->degree() < 4 && h1->next->twin->vertex->degree() < 3) {
-		return std::nullopt;
-	}
+	std::vector<FaceRef> faces_to_erase;
 
-	if (f2->degree() < 4 && h2->next->twin->vertex->degree() < 3) {
-		return std::nullopt;
-	}
+	std::unordered_map<VertexRef, FaceRef> outgoing_tip_vertices1;
 	bool v1_hasBoundryHalfedge = false, v2_hasBoundryHalfedge = false;
 	for (HalfedgeRef h = h1->twin->next; h != h1; h = h->twin->next) {
 			vertex_halfedges.push_back(h);
+			outgoing_tip_vertices1.emplace(h->twin->vertex, h->face == f2 ? f2 : h->twin->face == f1 ? f1 : h->face);
 			v1_hasBoundryHalfedge = v1_hasBoundryHalfedge || h->face->boundary;
 	}
 	 
 	for (HalfedgeRef h = h2->twin->next; h != h2; h = h->twin->next) {
 		vertex_halfedges.push_back(h);
+		if (auto search = outgoing_tip_vertices1.find(h->twin->vertex); search != outgoing_tip_vertices1.end()) {
+			if (search->second == h->face || search->second == h->twin->face  ) {
+				faces_to_erase.emplace_back(search->second);
+			} else {
+				return std::nullopt;
+			}
+		}
 		v2_hasBoundryHalfedge = v2_hasBoundryHalfedge || h->face->boundary;
+	}
+
+	for (auto f: faces_to_erase) {
+		if(f->boundary) {
+			return std::nullopt;
+		}
+		if (f->degree() < 4 && f->halfedge->next->twin->vertex->degree() < 3) {
+			return std::nullopt;
+		}
 	}
  
 	if (v1_hasBoundryHalfedge && v2_hasBoundryHalfedge && !e->on_boundary()) {
@@ -888,6 +903,20 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	}
 	 
 	// ============== begin to update =========================
+	auto remove_invalid_face = [this](FaceRef f) {
+		HalfedgeRef he1 = f->halfedge;
+		HalfedgeRef he2 = he1->next;
+		he1->twin->twin = he2->twin;
+		he2->twin->twin = he1->twin;
+		he2->twin->edge = he1->edge;
+		he1->edge->halfedge = he1->twin;
+		he1->vertex->halfedge = he1->twin->next;
+		he2->vertex->halfedge = he2->twin->next;
+		erase_edge(he2->edge);
+		erase_halfedge(he1);
+		erase_halfedge(he2);
+		erase_face(f);
+	};
 
 	// Create a new vertex at the midpoint of the edge
 	VertexRef vm = emplace_vertex();
@@ -909,29 +938,11 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 		}
 		i++;
 	}
- 
-	auto remove_invalid_face = [this](FaceRef f) {
-		HalfedgeRef he1 = f->halfedge;
-		HalfedgeRef he2 = he1->next;
-		he1->twin->twin = he2->twin;
-		he2->twin->twin = he1->twin;
-		he2->twin->edge = he1->edge;
-		he1->edge->halfedge = he1->twin;
-		he1->vertex->halfedge = he1->twin->next;
-		he2->vertex->halfedge = he2->twin->next;
-		erase_edge(he2->edge);
-		erase_halfedge(he1);
-		erase_halfedge(he2);
-		erase_face(f);
-	};
-
-	if(f1->degree() < 3) {
-		remove_invalid_face(f1);
-	}  
-
-	if(f2->degree() < 3) {
-		remove_invalid_face(f2);
-	}  
+	
+	for (auto f: faces_to_erase) {
+		remove_invalid_face(f);
+	}
+	 
  
 	erase_vertex(v1);
 	erase_vertex(v2);

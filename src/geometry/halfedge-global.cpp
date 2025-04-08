@@ -1,5 +1,5 @@
 #include "halfedge.h"
-
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <iostream>
@@ -317,13 +317,61 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 	}
 	L /= edges.size();
 
-auto check = [this](){
-	if (auto msg = validate()) {
-		// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
-		std::cout << "mesh is invalid after collapse: " << msg.value().second << std::endl;
-		exit(1);
-	}
-};
+	auto check = [this](Index id){
+		if (auto msg = validate()) {
+			// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
+			std::cout << std::to_string(id) << ": mesh is invalid after collapse: " << msg.value().second << std::endl;
+			exit(1);
+		}
+	};
+
+	auto peek_edge = [this](EdgeRef e) {
+		HalfedgeRef h = e->halfedge;
+		std::map<uint32_t, FaceRef> incident_faces;
+		std::map<uint32_t, VertexRef> incident_vertices;
+		std::vector<VertexRef> reindexed_vertices;
+		std::map<uint32_t, uint32_t> incident_to_reindexed;
+		do {
+			incident_faces[h->face->id] = h->face;
+			h = h->twin->next;
+		} while (h != e->halfedge);
+		h = e->halfedge->twin;
+		do {
+			incident_faces[h->face->id] = h->face;
+			h = h->twin->next;
+		} while (h != e->halfedge->twin);
+		for (auto&[_, f]: incident_faces) {
+			HalfedgeRef h = f->halfedge;
+			do {
+				incident_vertices[h->vertex->id] = h->vertex;
+				h = h->next;
+			} while (h != f->halfedge);
+		}
+		std::cout << "incident vertices << " << incident_vertices.size()<< ": " << std::endl;
+		size_t i = 0;
+		for (auto&[_, v]: incident_vertices) {
+			reindexed_vertices.push_back(v);
+			incident_to_reindexed[v->id] = i;
+			std::cout << "{Vec3"<< v->position << ", Vec3"<< v->halfedge->corner_normal << ", Vec2"<< v->halfedge->corner_uv <<", " << i << "}, " << std::endl;
+			i++;
+		}
+		std::cout << "faces indices " << incident_faces.size()<< ": {" ;
+		for (auto&[id, f]: incident_faces) {
+			// std::cout << "["<< f->id << "] : {" ;
+			HalfedgeRef h = f->halfedge;
+			// size_t i = 0;
+			do {
+				// if(i > 0) std::cout ;
+				assert(incident_to_reindexed.count(h->vertex->id));
+				std::cout << incident_to_reindexed[h->vertex->id] << ", ";
+				h = h->next;
+				// i++;
+			} while (h != f->halfedge);
+			
+		}
+		std::cout << "} " << std::endl;
+		std::cout << "collapse_edge:" << incident_to_reindexed[e->halfedge->vertex->id] << "-" << incident_to_reindexed[e->halfedge->twin->vertex->id] << std::endl;
+	};
   // Repeat the four main steps for `outer_iterations` iterations:
 	for (uint32_t i = 0; i < params.outer_iterations; i++) {
 		// -> Split edges much longer than the target length.
@@ -332,11 +380,10 @@ auto check = [this](){
 		EdgeRef last_old_edge = std::prev(edges.end());
 		for (EdgeRef e = edges.begin(); e != std::next(last_old_edge); ++e) {
 			if (e->length() > L * params.longer_factor) {
-// std::cout << "split_edge:" << e->to_string() << std::endl;
-// std::cout << "before:" << describe() << "\n" << describe2() << std::endl;
+				std::cout << i << ": split_edge:" << e->to_string() << std::endl;
+				auto id = e->id;
 				split_edge(e);
-// check();
-// std::cout << "after:" << describe() << "\n" << describe2() << std::endl;
+				check(id);
 			}
 		}
 		// -> Collapse edges much shorter than the target length.
@@ -350,27 +397,14 @@ auto check = [this](){
 		}
 		for (EdgeRef e : edges_to_collapse) {
 			if (!is_erased(e)) {
-std::cout << "collapse_edge:" << e->to_string() << std::endl;
+std::cout << i << ": collapse_edge:" << e->to_string() << std::endl;
 				auto id = e->id;
-if(id == 2399) {
-	HalfedgeRef h = e->halfedge;
-	do {
-		std::cout <<h->face->to_string() << std::endl;
-		h = h->twin->next;
-	} while (h != e->halfedge);
-std::cout << "-----twin----" << std::endl;
-	h = e->halfedge->twin;
-	do {
-		std::cout <<h->face->to_string() << std::endl;
-		h = h->twin->next;
-	} while (h != e->halfedge->twin);
-	
-	
-}
-
+// if(id == 458) {
+// 	std::cout << "collapse_edge:" << e->to_string() << std::endl;
+// 	peek_edge(e);
+// }
 				collapse_edge(e);
-if(id == 2399)
-	check();  
+				check(id);  
 			}
 		}
 		// -> Flip each edge if it improves vertex degree.
@@ -386,9 +420,10 @@ if(id == 2399)
 			int dc = vc->degree();
 			int dd = vd->degree();
 			if (std::abs(da-6) + std::abs(db-6) + std::abs(dc-6) + std::abs(dd-6) > std::abs(da-1-6) + std::abs(db-1-6) + std::abs(dc+1-6) + std::abs(dd+1-6)) {
-std::cout << "flip_edge:" << e->to_string() << std::endl;
+std::cout << i << ": flip_edge:" << e->to_string() << std::endl;
+				auto id = e->id;
 				flip_edge(e);
-check();
+				check(id);
 			}
 		}
 		

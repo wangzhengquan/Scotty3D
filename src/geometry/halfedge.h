@@ -531,11 +531,11 @@ private:
 		return target;
 	}
 	//a fresh element id; assigned + incremented by emplace_*() functions:
-	// uint32_t next_id = 0;
-	uint32_t next_edge_id = 0;
-	uint32_t next_halfedge_id = 0;
-	uint32_t next_face_id = 0;
-	uint32_t next_vertex_id = 0;
+	uint32_t next_id = 0;
+	// uint32_t next_edge_id = 0;
+	// uint32_t next_halfedge_id = 0;
+	// uint32_t next_face_id = 0;
+	// uint32_t next_vertex_id = 0;
 
 	//free lists used by the erase() and emplace_*() functions:
 	std::list<Vertex> free_vertices;

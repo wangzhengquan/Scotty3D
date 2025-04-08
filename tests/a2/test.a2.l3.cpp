@@ -1,5 +1,6 @@
 #include "test.h"
 #include "geometry/halfedge.h"
+#include "geometry/util.h"
 #include <iostream>
 
 static void expect_collapse(Halfedge_Mesh &mesh, Halfedge_Mesh::EdgeRef edge, Halfedge_Mesh const &expect) {
@@ -316,17 +317,13 @@ Test test_a2_l3_collapse_edge_complex1("a2.l3.collapse_edge.complex1", []() {
 													Vec3(1.15f, 0.5f, 0.0f),
 		 Vec3(-0.75f, -0.525f, 0.0f), 						
 		 Vec3(-1.0f, -1.0f, 0.0f),  Vec3(1.0f, -1.0f, 0.0f)
-																			
 	}, {
 		{0, 2, 1}, 
 		{2, 4, 1}, 
 		{2, 3, 4}
 	});
 
- 
-
 	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->next->edge;
-
 	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
 																edge->center(),
 		Vec3(-0.75f, -0.525f, 0.0f), 						
@@ -339,19 +336,49 @@ Test test_a2_l3_collapse_edge_complex1("a2.l3.collapse_edge.complex1", []() {
 	expect_collapse(mesh, edge, after);
 });
 
-// Test test_a2_l3_collapse_edge_repeat("a2.l3.collapse_edge.repeat", []() {
-// 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
-// 		Vec3(-1.0f, 1.1f, 0.0f), Vec3(1.1f, 1.0f, 0.0f),
-// 		                         Vec3(1.2f, 0.0f, 0.0f),  
-// 		Vec3(-1.4f,-0.7f, 0.0f), Vec3(1.5f, -1.0f, 0.0f)
-// 	}, {
-// 		{0, 2, 1}, 
-// 		{0, 3, 2}, 
-// 		{1, 2, 4}, 
-// 		{2, 3, 4}
-// 	});
-// 	Halfedge_Mesh::Isotropic_Remesh_Parameters params;
-// 	mesh.isotropic_remesh(params);
-	 
-// });
+ 
+Test test_a2_l3_collapse_triangular_pyramid("a2.l3.collapse_edge.triangular.pyramid", []() {
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		 Vec3{0.0f, 1.0f, 0.0f},  
+		 Vec3{1.0f * std::cos(0.f * 2.f * PI_F / 3), 0.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 						
+		 Vec3{1.0f * std::cos(1.f * 2.f * PI_F / 3), 1.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 
+		 Vec3{1.0f * std::cos(2.f * 2.f * PI_F / 3), 2.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 
+	}, {
+		{0, 2, 1}, 
+		{0, 3, 2}, 
+		{0, 1, 3},
+		{1, 2, 3}
+	});
+
+	Halfedge_Mesh::EdgeRef edge = mesh.halfedges.begin()->next->edge;
+
+	Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		 Vec3{0.0f, 1.0f, 0.0f},  
+		 edge->center(), 						
+		 Vec3{1.0f * std::cos(2.f * 2.f * PI_F / 3), 2.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 
+	}, {
+		{0, 2, 1}, 
+		{0, 1, 2}
+	});
+
+	expect_collapse(mesh, edge, after);
+});
+
+Test test_a2_l3_collapse_edge_custom("a2.l3.collapse_edge.custom", []() {
+	Util::Gen::Data data = Util::Gen::custom();
+	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_mesh(Indexed_Mesh(std::move(data.verts), std::move(data.elems)));
+	Halfedge_Mesh::EdgeRef edge = mesh.edges.end();
+	for (auto e = mesh.edges.begin(); e != mesh.edges.end(); ++e) {
+		if(e->halfedge->vertex->id == 3 && e->halfedge->twin->vertex->id == 4) {
+			edge = e;
+			break;
+		}
+	}
+	assert(edge != mesh.edges.end());
+	if (auto ret = mesh.collapse_edge(edge)) {
+		if (auto msg = mesh.validate()) {
+			throw Test::error("Invalid mesh: " + msg.value().second);
+		}
+	}
+});
 

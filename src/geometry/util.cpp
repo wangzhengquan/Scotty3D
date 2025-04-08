@@ -1,8 +1,10 @@
 #include "util.h"
 #include "../scene/shape.h"
-
+#include "../lib/stacktrace.h"
 #include <map>
 #include <set>
+#include <iostream>
+
 
 namespace Util {
 
@@ -55,8 +57,11 @@ Indexed_Mesh quad_mesh(float x, float y) {
 }
 
 Indexed_Mesh pentagon_mesh(float r) {
-	Gen::Data pentagon = Gen::pentagon(r);
-	return Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
+	// Gen::Data pentagon = Gen::pentagon(r);
+	// return Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
+	Gen::Data pentagon = Gen::triangular_pyramid(1.0, 1.0);
+	Indexed_Mesh mesh = Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
+	return mesh;
 }
 
 Indexed_Mesh texture_sphere_mesh(float r, uint32_t subdivisions) {
@@ -220,29 +225,63 @@ Data pentagon(float r) {
 	        {0, 2, 1, 0, 3, 2, 0, 4, 3}};
 }
 
+Data triangular_pyramid(float radius, float height) {
+	// std::vector<Indexed_Mesh::Vert> verts;
+	return {{{Vec3{0.0f, height, 0.0f}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 0.0f}, 0},
+					{Vec3{radius * std::cos(0.f * 2.f * PI_F / 3), 0.0f, radius * std::sin(0.f * 2.f * PI_F / 3)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 0.0f}, 1},
+	        {Vec3{radius * std::cos(1.f * 2.f * PI_F / 3), 0.0f, radius * std::sin(1.f * 2.f * PI_F / 3)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 1.0f}, 2},
+	        {Vec3{radius * std::cos(2.f * 2.f * PI_F / 3), 0.0f, radius * std::sin(2.f * 2.f * PI_F / 3)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{1.0f, 0.0f}, 3}
+					},
+	        {0, 2, 1, 0, 3, 2, 0, 1, 3, 1, 2, 3}};
+}
+
+Data custom(){
+	return {{
+					{Vec3{-0.139527f, 0.857635f, 0.024336f}, Vec3{-0.4296f, 0.8485f, -0.3091f}, Vec2{0,0},0}, 
+					{Vec3{-0.166586f, 0.840026f, 0.027891f}, Vec3{-0.723045f, 0.62911f, -0.285355f}, Vec2{0,0},1}, 
+					{Vec3{-0.193389f, 0.825913f, 0.070959f}, Vec3{-0.7656f, 0.6227f, -0.1618f}, Vec2{0,0},2}, 
+					{Vec3{-0.143201f, 0.867156f, 0.065209f}, Vec3{-0.429f, 0.8868f, -0.1718f}, Vec2{0,0},3}, 
+					{Vec3{-0.169969f, 0.849928f, 0.067663f}, Vec3{-0.632f, 0.7559f, -0.1712f}, Vec2{0,0},4}, 
+					{Vec3{-0.111616f, 0.876789f, 0.061902f}, Vec3{-0.2228f, 0.9589f, -0.1759f}, Vec2{0,0},5}, 
+					{Vec3{-0.158336f, 0.86002f, 0.0880435f}, Vec3{-0.540295f, 0.835001f, -0.104192f}, Vec2{0,0},6}, 
+					{Vec3{-0.128897f, 0.873906f, 0.0846895f}, Vec3{-0.337808f, 0.934323f, -0.113694f}, Vec2{0,0},7}, 
+					{Vec3{-0.154893f, 0.853591f, 0.04655f}, Vec3{-0.534307f, 0.812448f, -0.233333f}, Vec2{0,0},8}, 
+					{Vec3{-0.18334f, 0.839377f, 0.0900985f}, Vec3{-0.705492f, 0.701566f, -0.100432f}, Vec2{0,0},9}, 
+					{Vec3{-0.125571f, 0.867212f, 0.043119f}, Vec3{-0.329195f, 0.911997f, -0.244727f}, Vec2{0,0},10}, 
+					{Vec3{-0.160806f, 0.860606f, 0.120416f}, Vec3{-0.684138f, 0.72405f, 0.0877886f}, Vec2{0,0},11}, 
+					{Vec3{-0.185594f, 0.82411f, 0.0414257f}, Vec3{-0.782533f, 0.597695f, -0.174365f}, Vec2{0,0},12} 
+					}, 
+	        {12, 2, 4, 6, 3, 4, 7, 5, 3, 8, 4, 3, 9, 4, 2, 10, 3, 5, 1, 12, 4, 11, 6, 4, 3, 6, 11, 11, 7, 3, 4, 8, 1, 0, 8, 3, 4, 9, 11, 3, 10, 0, } 
+				};
+}
+
+
 // https://wiki.unity3d.com/index.php/ProceduralPrimitives
 Data cone(float bradius, float tradius, float height, uint32_t sides, bool caps) {
-
+// std::cout << "caps:" << caps << ", height:" << ", bradius: "<< bradius << height << std::endl;
+// print_stacktrace();
 	const uint32_t n_sides = sides, n_cap = n_sides + 1;
 	constexpr float _2pi = PI_F * 2.0f;
 
 	std::vector<Vec3> vertices(n_cap + n_cap + n_sides * 2 + 2);
 	size_t vert = 0;
 
-	vertices[vert++] = Vec3(0.0f, 0.0f, 0.0f);
+	vertices[vert++] = Vec3(0.0f, 0.0f, 0.0f); // 底面中心点(0,0,0)
 
 	float t = 0.0f;
 	float step = _2pi / n_sides;
 
 	while (vert <= n_sides) {
+		// 底面圆周上的顶点
 		vertices[vert] = Vec3(std::cos(t) * bradius, 0.0f, std::sin(t) * bradius);
 		vert++;
 		t += step;
 	}
 
-	vertices[vert++] = Vec3(0.0f, height, 0.0f);
+	vertices[vert++] = Vec3(0.0f, height, 0.0f); // 顶面中心点
 	t = 0.0f;
 	while (vert <= n_sides * 2 + 1) {
+		// 顶面圆周上的顶点
 		vertices[vert] = Vec3(std::cos(t) * tradius, height, std::sin(t) * tradius);
 		vert++;
 		t += step;
@@ -251,6 +290,7 @@ Data cone(float bradius, float tradius, float height, uint32_t sides, bool caps)
 	uint32_t v = 0;
 	t = 0.0f;
 	while (vert <= vertices.size() - 4) {
+		// 侧面顶点(连接顶面和底面)
 		vertices[vert] = Vec3(std::cos(t) * tradius, height, std::sin(t) * tradius);
 		vertices[vert + 1] = Vec3(std::cos(t) * bradius, 0.0f, std::sin(t) * bradius);
 		vert += 2;
@@ -263,14 +303,17 @@ Data cone(float bradius, float tradius, float height, uint32_t sides, bool caps)
 	std::vector<Vec3> normals(vertices.size());
 	vert = 0;
 	while (vert <= n_sides) {
+		// 底面法线全部向下
 		normals[vert++] = Vec3(0.0f, -1.0f, 0.0f);
 	}
 	while (vert <= n_sides * 2 + 1) {
+		// 顶面法线全部向上
 		normals[vert++] = Vec3(0.0f, 1.0f, 0.0f);
 	}
 
 	v = 0;
 	while (vert <= vertices.size() - 4) {
+		// 侧面法线根据角度计算，垂直于侧面
 		float rad = static_cast<float>(v) / n_sides * _2pi;
 		float cos = std::cos(rad);
 		float sin = std::sin(rad);

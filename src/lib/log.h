@@ -54,3 +54,7 @@ inline std::string last_file(std::string path) {
 #undef assert
 #define assert(expr)                                                                               \
 	(void)((!!(expr)) || (fail_assert(#expr, last_file(__FILE__).c_str(), __LINE__), 0))
+
+#define assert2(expr, fmt, ...)      \
+  do { if (!(expr)) {warn(#expr ": " fmt, ##__VA_ARGS__); std::exit(__LINE__);}} while (0)
+

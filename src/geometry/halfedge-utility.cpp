@@ -51,12 +51,12 @@ Halfedge_Mesh::VertexRef Halfedge_Mesh::emplace_vertex() {
 	VertexRef vertex;
 	if (free_vertices.empty()) {
 		//allocate a new vertex:   next_vertex_id
-		vertex = vertices.emplace(vertices.end(), Vertex(next_vertex_id++));
+		vertex = vertices.emplace(vertices.end(), Vertex(next_id++));
 	} else {
 		//recycle vertex from free list:
 		vertex = free_vertices.begin();
 		vertices.splice(vertices.end(), free_vertices, free_vertices.begin());
-		*vertex = Vertex(next_vertex_id++); //set to default values
+		*vertex = Vertex(next_id++); //set to default values
 	}
 	//make sure vertex doesn't reference anything:
 	vertex->halfedge = halfedges.end();
@@ -67,12 +67,12 @@ Halfedge_Mesh::EdgeRef Halfedge_Mesh::emplace_edge(bool sharp) {
 	EdgeRef edge;
 	if (free_edges.empty()) {
 		//allocate a new edge: next_edge_id
-		edge = edges.emplace(edges.end(), Edge(next_edge_id++, sharp));
+		edge = edges.emplace(edges.end(), Edge(next_id++, sharp));
 	} else {
 		//recycle edge from free list:
 		edge = free_edges.begin();
 		edges.splice(edges.end(), free_edges, free_edges.begin());
-		*edge = Edge(next_edge_id++, sharp); //set to default values
+		*edge = Edge(next_id++, sharp); //set to default values
 	}
 	//make sure edge doesn't reference anything:
 	edge->halfedge = halfedges.end();
@@ -83,12 +83,12 @@ Halfedge_Mesh::FaceRef Halfedge_Mesh::emplace_face(bool boundary) {
 	FaceRef face;
 	if (free_faces.empty()) {
 		//allocate a new face: next_face_id
-		face = faces.emplace(faces.end(), Face(next_face_id++, boundary));
+		face = faces.emplace(faces.end(), Face(next_id++, boundary));
 	} else {
 		//recycle face from free list:
 		face = free_faces.begin();
 		faces.splice(faces.end(), free_faces, free_faces.begin());
-		*face = Face(next_face_id++, boundary); //set to default values
+		*face = Face(next_id++, boundary); //set to default values
 	}
 	face->halfedge = halfedges.end();
 	return face;
@@ -100,10 +100,10 @@ Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::emplace_halfedge() {
 		//move from free list: next_halfedge_id
 		halfedge = free_halfedges.begin();
 		halfedges.splice(halfedges.end(), free_halfedges, free_halfedges.begin());
-		*halfedge = Halfedge(next_halfedge_id++); //set to default values
+		*halfedge = Halfedge(next_id++); //set to default values
 	} else {
 		//allocate a new halfedge:
-		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_halfedge_id++));
+		halfedge = halfedges.insert(halfedges.end(), Halfedge(next_id++));
 	}
 	//set pointers to default values:
 	halfedge->twin = halfedges.end();
@@ -708,6 +708,7 @@ std::optional<std::pair<Halfedge_Mesh::ElementCRef, std::string>> Halfedge_Mesh:
 
 	//------------------------------
 	// - faces are simple (touch each vertex / edge at most once)
+	std::unordered_set< std::pair< Index, Index > > edge_pair_vertices_set; //for quick lookup of halfedges by from/to vertex index
 	for (FaceCRef f = faces.begin(); f != faces.end(); ++f) {
 		std::unordered_set< VertexCRef > touched_vertices;
 		std::unordered_set< EdgeCRef > touched_edges;
@@ -716,7 +717,11 @@ std::optional<std::pair<Halfedge_Mesh::ElementCRef, std::string>> Halfedge_Mesh:
 		do {
 			if (!touched_vertices.emplace(h->vertex).second) return {{f, describe_face(f) + " touches " + describe_vertex(h->vertex) + " more than once." + "face = " + f->to_string() }};
 			if (!touched_edges.emplace(h->edge).second) return {{f, describe_face(f) + " touches " + describe_edge(h->edge) + " more than once."}};
-
+			
+			auto inserted = edge_pair_vertices_set.emplace(std::make_pair(h->vertex->id, h->next->vertex->id));
+			if(!inserted.second) { 
+				 return {{h->edge,  "edge "+ std::to_string(h->vertex->id) + "->" + std::to_string(h->next->vertex->id) + " mentioned more than once in the same direction, not an oriented, manifold mesh."}};
+			} 
 			h = h->next;
 		} while (h != f->halfedge);
 	}
@@ -736,11 +741,11 @@ Halfedge_Mesh Halfedge_Mesh::copy() const {
 	Halfedge_Mesh mesh;
 
 	//new mesh should also have the same next_id as this one:
-	// mesh.next_id = next_id;
-	mesh.next_edge_id = next_edge_id;
-	mesh.next_halfedge_id = next_halfedge_id;
-	mesh.next_face_id = next_face_id;
-	mesh.next_vertex_id = next_vertex_id;
+	mesh.next_id = next_id;
+	// mesh.next_edge_id = next_edge_id;
+	// mesh.next_halfedge_id = next_halfedge_id;
+	// mesh.next_face_id = next_face_id;
+	// mesh.next_vertex_id = next_vertex_id;
 
 	// Copy geometry from the original mesh and create a map from
 	// pointers in the original mesh to those in the new mesh.
@@ -835,7 +840,8 @@ Halfedge_Mesh Halfedge_Mesh::from_indexed_faces(std::vector< Vec3 > const &verti
 			halfedge->face = face;
 
 			auto inserted = halfedges.emplace(std::make_pair(a,b), halfedge);
-			assert(inserted.second); //if edge mentioned more than once in the same direction, not an oriented, manifold mesh
+			assert(inserted.second);  //if edge mentioned more than once in the same direction, not an oriented, manifold mesh
+			// assert2(inserted.second, "a=%d, b=%d", a, b);
 
 			auto twin = halfedges.find(std::make_pair(b,a));
 			if (twin == halfedges.end()) {
