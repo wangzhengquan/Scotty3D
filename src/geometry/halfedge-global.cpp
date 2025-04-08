@@ -320,7 +320,7 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 	auto check = [this](Index id){
 		if (auto msg = validate()) {
 			// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
-			std::cout << std::to_string(id) << ": mesh is invalid after collapse: " << msg.value().second << std::endl;
+			std::cout << std::to_string(id) << ": mesh is invalid : " << msg.value().second << std::endl;
 			exit(1);
 		}
 	};
@@ -347,7 +347,7 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 				h = h->next;
 			} while (h != f->halfedge);
 		}
-		std::cout << "incident vertices << " << incident_vertices.size()<< ": " << std::endl;
+		std::cout << "incident vertices : " << incident_vertices.size()<< ": " << std::endl;
 		size_t i = 0;
 		for (auto&[_, v]: incident_vertices) {
 			reindexed_vertices.push_back(v);
@@ -357,20 +357,16 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		}
 		std::cout << "faces indices " << incident_faces.size()<< ": {" ;
 		for (auto&[id, f]: incident_faces) {
-			// std::cout << "["<< f->id << "] : {" ;
 			HalfedgeRef h = f->halfedge;
-			// size_t i = 0;
 			do {
-				// if(i > 0) std::cout ;
 				assert(incident_to_reindexed.count(h->vertex->id));
 				std::cout << incident_to_reindexed[h->vertex->id] << ", ";
 				h = h->next;
-				// i++;
 			} while (h != f->halfedge);
 			
 		}
 		std::cout << "} " << std::endl;
-		std::cout << "collapse_edge:" << incident_to_reindexed[e->halfedge->vertex->id] << "-" << incident_to_reindexed[e->halfedge->twin->vertex->id] << std::endl;
+		std::cout << "edge:" << incident_to_reindexed[e->halfedge->vertex->id] << "-" << incident_to_reindexed[e->halfedge->twin->vertex->id] << std::endl;
 	};
   // Repeat the four main steps for `outer_iterations` iterations:
 	for (uint32_t i = 0; i < params.outer_iterations; i++) {
@@ -392,7 +388,6 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		for (EdgeRef e = edges.begin(); e != edges.end(); ++e) {
 			if (e->length() < L * params.shorter_factor) {
 				edges_to_collapse.push_back(e);
-	
 			}
 		}
 		for (EdgeRef e : edges_to_collapse) {
@@ -422,8 +417,12 @@ std::cout << i << ": collapse_edge:" << e->to_string() << std::endl;
 			if (std::abs(da-6) + std::abs(db-6) + std::abs(dc-6) + std::abs(dd-6) > std::abs(da-1-6) + std::abs(db-1-6) + std::abs(dc+1-6) + std::abs(dd+1-6)) {
 std::cout << i << ": flip_edge:" << e->to_string() << std::endl;
 				auto id = e->id;
+// if(id == 21349) {
+// 	std::cout << "flip_edge:" << e->to_string() << std::endl;
+// 	peek_edge(e);
+// }
 				flip_edge(e);
-				check(id);
+			  check(id);
 			}
 		}
 		
@@ -435,7 +434,6 @@ std::cout << i << ": flip_edge:" << e->to_string() << std::endl;
 		// -> Repeat the tangential smoothing part params.smoothing_iterations times.
 		
 		for(uint32_t j = 0; j < params.smoothing_iterations; j++){
-// std::cout << "j=" << j << std::endl;
 			std::unordered_map<VertexRef, Vec3> vertices_new_position;
 			for(VertexRef vertex = vertices.begin(); vertex < vertices.end(); vertex++) {
 				Vec3 p = vertex->position;

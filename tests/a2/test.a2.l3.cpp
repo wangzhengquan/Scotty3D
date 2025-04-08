@@ -364,8 +364,8 @@ Test test_a2_l3_collapse_triangular_pyramid("a2.l3.collapse_edge.triangular.pyra
 	expect_collapse(mesh, edge, after);
 });
 
-Test test_a2_l3_collapse_edge_custom("a2.l3.collapse_edge.custom", []() {
-	Util::Gen::Data data = Util::Gen::custom();
+Test test_a2_l3_collapse_edge_custom1("a2.l3.collapse_edge.custom1", []() {
+	Util::Gen::Data data = Util::Gen::custom1();
 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_mesh(Indexed_Mesh(std::move(data.verts), std::move(data.elems)));
 	Halfedge_Mesh::EdgeRef edge = mesh.edges.end();
 	for (auto e = mesh.edges.begin(); e != mesh.edges.end(); ++e) {

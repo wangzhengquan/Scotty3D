@@ -66,7 +66,8 @@ Data closed_ico_sphere(float radius, uint32_t level);
 Data uv_hemisphere(float radius);
 Data cone(float bradius, float tradius, float height, uint32_t sides, bool caps);
 Data torus(float iradius, float oradius, uint32_t segments, uint32_t sides);
-Data custom();
 Data triangular_pyramid(float radius, float height) ;
+Data custom1();
+Data custom2();
 } // namespace Gen
 } // namespace Util

@@ -595,6 +595,7 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	if (e->on_boundary()) {
 			return std::nullopt;
 	}
+	
 
 	// Collect the necessary halfedges
 	HalfedgeRef h = e->halfedge;
@@ -619,7 +620,17 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(EdgeRef e) {
 	// Collect the necessary faces
 	FaceRef fh = h->face;
 	FaceRef ft = t->face;
-
+ 
+	HalfedgeRef he = h_next_next;
+	do {
+		// if there is originally one halfedge connected the same vertices as the one we are trying to flip to, return std::nullopt.
+		// for example flipping in Triangular pyramid.
+		if(he->next->vertex == t_next_next->vertex) {
+			return std::nullopt; 
+		}
+		he = he->twin->next;
+	} while (he != h_next_next);
+	 
 	// Reassign the connectivity
 	h->next = h_next_next;
 	h_prev->next = t_next;
