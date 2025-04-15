@@ -337,7 +337,7 @@ Test test_a2_l3_collapse_edge_complex1("a2.l3.collapse_edge.complex1", []() {
 });
 
  
-Test test_a2_l3_collapse_triangular_pyramid("a2.l3.collapse_edge.triangular.pyramid", []() {
+Test test_a2_l3_collapse_tetrahedron("a2.l3.collapse_edge.triangular.pyramid", []() {
 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
 		 Vec3{0.0f, 1.0f, 0.0f},  
 		 Vec3{1.0f * std::cos(0.f * 2.f * PI_F / 3), 0.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 						

@@ -225,7 +225,7 @@ Data pentagon(float r) {
 	        {0, 2, 1, 0, 3, 2, 0, 4, 3}};
 }
 
-Data triangular_pyramid(float radius, float height) {
+Data tetrahedron(float radius, float height) {
 	// std::vector<Indexed_Mesh::Vert> verts;
 	return {{{Vec3{0.0f, height, 0.0f}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 0.0f}, 0},
 					{Vec3{radius * std::cos(0.f * 2.f * PI_F / 3), 0.0f, radius * std::sin(0.f * 2.f * PI_F / 3)}, Vec3{0.0f, 1.0f, 0.0f}, Vec2{0.0f, 0.0f}, 1},

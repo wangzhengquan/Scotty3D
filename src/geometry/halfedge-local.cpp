@@ -891,6 +891,9 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(EdgeRef e) 
 	for (HalfedgeRef h = h2->twin->next; h != h2; h = h->twin->next) {
 		vertex_halfedges.push_back(h);
 		if (auto search = outgoing_tip_vertices1.find(h->twin->vertex); search != outgoing_tip_vertices1.end()) {
+			// two halfedges outging each vertex of the collaping edge connnect at the same vertex.
+			// if the two halfedges are not connected to the same face, return std::nullopt.
+			// if the two halfedges are connected to the same face, remove the face.
 			if (search->second == h->face || search->second == h->twin->face  ) {
 				faces_to_erase.emplace_back(search->second);
 			} else {

@@ -126,7 +126,7 @@ Test test_a2_l1_flip_edge_edge_boundary("a2.l1.flip_edge.edge.boundary", []() {
 	}
 });
 
-Test test_a2_l1_flip_edge_triangular_pyramid("a2.l1.flip_edge.triangular.pyramid", []() {
+Test test_a2_l1_flip_edge_tetrahedron("a2.l1.flip_edge.triangular.pyramid", []() {
 	Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
 		 Vec3{0.0f, 1.0f, 0.0f},  
 		 Vec3{1.0f * std::cos(0.f * 2.f * PI_F / 3), 0.0f, 1.0f * std::sin(0.f * 2.f * PI_F / 3)}, 						

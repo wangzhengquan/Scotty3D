@@ -316,7 +316,7 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		L += e->length();
 	}
 	L /= edges.size();
-
+// std::cout << "L=" << L << std::endl;
 	auto check = [this](Index id){
 		if (auto msg = validate()) {
 			// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
@@ -376,10 +376,10 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		EdgeRef last_old_edge = std::prev(edges.end());
 		for (EdgeRef e = edges.begin(); e != std::next(last_old_edge); ++e) {
 			if (e->length() > L * params.longer_factor) {
-				std::cout << i << ": split_edge:" << e->to_string() << std::endl;
-				auto id = e->id;
+				// std::cout << i << ": split_edge:" << e->to_string() << std::endl;
+				// auto id = e->id;
 				split_edge(e);
-				check(id);
+				// check(id);
 			}
 		}
 		// -> Collapse edges much shorter than the target length.
@@ -392,14 +392,10 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		}
 		for (EdgeRef e : edges_to_collapse) {
 			if (!is_erased(e)) {
-std::cout << i << ": collapse_edge:" << e->to_string() << std::endl;
-				auto id = e->id;
-// if(id == 458) {
-// 	std::cout << "collapse_edge:" << e->to_string() << std::endl;
-// 	peek_edge(e);
-// }
+// std::cout << i << ": collapse_edge:" << e->to_string() << std::endl;
+				// auto id = e->id;
 				collapse_edge(e);
-				check(id);  
+				// check(id);  
 			}
 		}
 		// -> Flip each edge if it improves vertex degree.
@@ -415,14 +411,10 @@ std::cout << i << ": collapse_edge:" << e->to_string() << std::endl;
 			int dc = vc->degree();
 			int dd = vd->degree();
 			if (std::abs(da-6) + std::abs(db-6) + std::abs(dc-6) + std::abs(dd-6) > std::abs(da-1-6) + std::abs(db-1-6) + std::abs(dc+1-6) + std::abs(dd+1-6)) {
-std::cout << i << ": flip_edge:" << e->to_string() << std::endl;
-				auto id = e->id;
-// if(id == 21349) {
-// 	std::cout << "flip_edge:" << e->to_string() << std::endl;
-// 	peek_edge(e);
-// }
+// std::cout << i << ": flip_edge:" << e->to_string() << std::endl;
+				// auto id = e->id;
 				flip_edge(e);
-			  check(id);
+			  // check(id);
 			}
 		}
 		
