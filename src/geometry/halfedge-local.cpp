@@ -363,7 +363,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(VertexRef v) {
 	//A2Lx5 (OPTIONAL): Bevel Vertex
 	// Reminder: This function does not update the vertex positions.
 	// Remember to also fill in bevel_positions (A2Lx5h)
-	
+std::cout << "==bevel_vertex" << std::endl;
 	// Collect the necessary halfedges around the vertex
 	std::vector<HalfedgeRef> vertex_halfedges;
 	std::vector<VertexRef> new_vertices;
@@ -428,6 +428,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(EdgeRef e) {
 	//A2Lx6 (OPTIONAL): Bevel Edge
 	// Reminder: This function does not update the vertex positions.
 	// remember to also fill in bevel_positions (A2Lx6h)
+std::cout << "==bevel_edge" << std::endl;
 	if (e->on_boundary()) {
 		return std::nullopt;
 	}
@@ -523,6 +524,7 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::extrude_face(FaceRef f) {
 	// Remember to also fill in Extrude Positions (A2L4h)
 
 	// Collect the necessary halfedges and vertices
+std::cout << "\n====extrude_face" << std::endl;
 	std::vector<HalfedgeRef> face_halfedges;
 	std::vector<VertexRef> face_vertices;
   auto copyVertex = [&](VertexRef v) -> VertexRef {
@@ -996,9 +998,9 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 		if(h->twin->face->boundary) {
 			return std::nullopt;
 		}
-		if (h->twin->face->degree() < 4) {
-			return std::nullopt;
-		}
+		// if (h->twin->face->degree() < 4) {
+		// 	return std::nullopt;
+		// }
 		halfedges.push_back(h);
 		vertices.push_back(h->vertex);
 		vertices_c.push_back(h->vertex);
@@ -1173,15 +1175,26 @@ void Halfedge_Mesh::extrude_positions(FaceRef face, Vec3 move, float shrink) {
 	// compute the centroid from these positions + use to shrink, offset by move
 
 	// Compute the centroid of the face
-	// Vec3 centroid = face->center();
-	// Vec3 normal = face->normal();
-
+	Vec3 centroid = face->center();
+	Vec3 normal = face->normal();
+std::cout << "shrink: " << shrink << std::endl;
+std::cout << "move: " << move << std::endl;
+// std::cout << "centroid: " << centroid << std::endl;
+	// move =  normal * dot(move, normal);
+// std::cout << "move2: " << move << std::endl;
 	HalfedgeRef h = face->halfedge;
 	do {
+			h->vertex->position -= (h->vertex->position - centroid) * shrink; 
 			h->vertex->position += move; 
-			h->vertex->position *= (1.0f - shrink);  
 			h = h->next;
 	} while (h != face->halfedge);
+
+	// HalfedgeRef h = face->halfedge;
+	// do {
+	// 		h->vertex->position += move; 
+	// 		h->vertex->position *=  1.0f - shrink;   
+	// 		h = h->next;
+	// } while (h != face->halfedge);
 	
 }
 
