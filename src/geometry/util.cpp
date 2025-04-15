@@ -57,11 +57,8 @@ Indexed_Mesh quad_mesh(float x, float y) {
 }
 
 Indexed_Mesh pentagon_mesh(float r) {
-	// Gen::Data pentagon = Gen::pentagon(r);
-	// return Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
-	Gen::Data pentagon = Gen::custom2();
-	Indexed_Mesh mesh = Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
-	return mesh;
+	Gen::Data pentagon = Gen::pentagon(r);
+	return Indexed_Mesh(std::move(pentagon.verts), std::move(pentagon.elems));
 }
 
 Indexed_Mesh texture_sphere_mesh(float r, uint32_t subdivisions) {

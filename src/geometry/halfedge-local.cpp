@@ -1007,6 +1007,31 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 		h = h->next;
 	} while(h !=f->halfedge);
 
+	std::vector<FaceRef> faces_to_erase;
+	// ============= update =================
+
+	auto remove_invalid_face = [this](FaceRef f) {
+		HalfedgeRef he1 = f->halfedge;
+		HalfedgeRef he2 = he1->next;
+		he1->twin->twin = he2->twin;
+		he2->twin->twin = he1->twin;
+		he2->twin->edge = he1->edge;
+		he1->edge->halfedge = he1->twin;
+	// std::cout << "he1->twin->next:" << string_of(he1->twin->next) << std::endl;
+	// std::cout << "he2->twin->next: " << string_of(he2->twin->next) << std::endl;
+		he1->vertex->halfedge = he1->twin->next;
+		he2->vertex->halfedge = he2->twin->next;
+		HalfedgeRef new_he = he2->twin;
+		erase_edge(he2->edge);
+		erase_halfedge(he1);
+		erase_halfedge(he2);
+		erase_face(f);
+		if(new_he->next->vertex->degree() < 2) {
+			prev(new_he)->next = new_he->next->next;
+			erase_vertex(new_he->next->vertex);
+			erase_fulledge(new_he);
+		}
+	};
 	VertexRef vm = emplace_vertex();
 	vm->position = f->center();
 	interpolate_data(vertices_c, vm);
@@ -1019,17 +1044,19 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(FaceRef f) 
 	for(size_t i = 0; i < n; i++ ) {
 		HalfedgeRef h = halfedges[i]->twin;
 		HalfedgeRef head = h->next;
-		HalfedgeRef tail = head;
-		while (tail->next != h) {
-			tail = tail->next;
-		}
+		HalfedgeRef tail = prev(h);
 		tail->next = head;
 		head->face->halfedge = head;
-		if(i == 0) {
+		if(head->face->degree() == 2) {
+			faces_to_erase.push_back(head->face);
+		} else {
 			vm->halfedge = head;
 		}
 	}
 
+	for (auto f: faces_to_erase) {
+		remove_invalid_face(f);
+	}
 	for(auto h : halfedges){
 		erase_fulledge(h);
 	}

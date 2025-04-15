@@ -321,7 +321,7 @@ public:
 		void set_te(HalfedgeRef twin_,  EdgeRef edge_) {
 			twin = twin_;  edge = edge_; 
 		}
-
+		std::string to_string() const; // A string representation of the halfedge
 	private:
 		Halfedge(uint32_t id_) : id(id_) { }
 		friend class Halfedge_Mesh;
@@ -484,6 +484,7 @@ public:
 	static bool is_erased(ElementCRef elem);
 	static Vec3 normal_of(ElementCRef elem);
 	static Vec3 center_of(ElementCRef elem);
+	std::string string_of(ElementCRef elem);
 	
 
 	static uint32_t id_of(ElementRef elem);

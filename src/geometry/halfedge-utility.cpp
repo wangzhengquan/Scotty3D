@@ -311,6 +311,13 @@ std::string Halfedge_Mesh::Face::to_string() const {
 	return ss.str();
 }
 
+std::string Halfedge_Mesh::Halfedge::to_string() const {
+	std::ostringstream ss;
+	ss  << "v" << vertex->id << "-h" << id << "->"  ;
+	return ss.str();
+}
+ 
+
 bool Halfedge_Mesh::Edge::on_boundary() const {
 	return halfedge->face->boundary || halfedge->twin->face->boundary;
 }
@@ -366,6 +373,15 @@ uint32_t Halfedge_Mesh::id_of(ElementCRef elem) {
 
 bool Halfedge_Mesh::is_erased(ElementCRef elem) {
 	return std::visit( [&](auto ref) -> bool { return (id_of(elem) & 0x80000000u) == 0x80000000u; }, elem );
+}
+
+std::string Halfedge_Mesh::string_of(ElementCRef elem){
+	return std::visit(overloaded{
+		[&](VertexCRef vert)->std::string { return (vert == vertices.end())? "end": vert->to_string(); },
+	  [&](EdgeCRef edge) { return edge == edges.end() ? "end" : edge->to_string(); },
+		[&](FaceCRef face) { return face == faces.end() ? "end" : face->to_string(); },
+	  [&](HalfedgeCRef he) { return he == halfedges.end() ? "end" : he->to_string(); }
+	}, elem);
 }
 
 Vec3 Halfedge_Mesh::normal_of(Halfedge_Mesh::ElementCRef elem) {

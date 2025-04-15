@@ -183,6 +183,50 @@ Test test_a2_lx3_collapse_face_basic_planar2("a2.lx3.collapse_face.basic.planar2
 	expect_collapse(mesh, face, after);
 });
 
+/*
+Initial mesh:
+0-------1\
+|\     /| \
+| \   / |  \
+|   2   |   3
+| /   \ |  /
+|/     \| /
+4-------5/
+
+Collapse face: 1-2-5 
+
+0
+|\   
+| \  
+|   2
+| /  
+|/   
+1
+*/
+Test test_a2_lx3_collapse_face_basic_planar3("a2.lx3.collapse_face.basic.planar3", []() {
+    Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 0.0f),
+		         Vec3(0.0f, 0.0f, 0.0f),               Vec3(2.0f, 0.0f, 0.0f),
+		Vec3(-1.0f,-1.0f, 0.0f), Vec3(1.0f, -1.0f, 0.0f)
+	}, {
+        {1, 2, 5},
+		{0, 2, 1}, 
+		{0, 4, 2},
+        {2, 4, 5},
+        {1, 5, 3},
+	});
+	
+	Halfedge_Mesh::FaceRef face = mesh.faces.begin();
+
+    Halfedge_Mesh after = Halfedge_Mesh::from_indexed_faces({
+		Vec3(-1.0f, 1.0f, 0.0f),  
+		Vec3(-1.0f,-1.0f, 0.0f), face->center()
+	}, {
+        {0, 1, 2},
+	});
+	// expect_collapse(mesh, face, after);
+});
+
  
 Test test_a2_lx3_collapse_face_triangle("a2.lx3.collapse_face.triangle", []() {
     Halfedge_Mesh mesh = Halfedge_Mesh::from_indexed_faces({
