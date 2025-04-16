@@ -402,6 +402,7 @@ void Pathtracer::do_trace(RNG &rng, Tile const &tile) {
 	//A3T1 - Step 0: understand this function!
 
 	HDR_Image sample(camera.film.width, camera.film.height, Spectrum(0.0f, 0.0f, 0.0f));
+	
 	for (uint32_t py = tile.y_begin; py < tile.y_end; ++py) {
 		for (uint32_t px = tile.x_begin; px < tile.x_end; ++px) {
 			for (uint32_t s = tile.s_begin; s < tile.s_end; ++s) {

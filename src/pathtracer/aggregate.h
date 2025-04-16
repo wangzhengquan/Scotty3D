@@ -43,14 +43,15 @@ public:
 	}
 
 	uint32_t visualize(GL::Lines& lines, GL::Lines& active, uint32_t level, Mat4 vtrans) const {
-		return std::visit(overloaded{[&](const BVH<Aggregate>& bvh) {
-										 return bvh.visualize(lines, active, level, vtrans);
-									 },
-		                             [&](const BVH<Instance>& bvh) {
-										 return bvh.visualize(lines, active, level, vtrans);
-									 },
-		                             [](const auto&) { return 0u; }},
-		                  underlying);
+		return std::visit(overloaded{
+			[&](const BVH<Aggregate>& bvh) {
+				return bvh.visualize(lines, active, level, vtrans);
+			},
+		  [&](const BVH<Instance>& bvh) {
+				return bvh.visualize(lines, active, level, vtrans);
+			},
+		  [](const auto&) { return 0u; }
+		}, underlying);
 	}
 
 	Vec3 sample(RNG &rng, Vec3 from) const {
