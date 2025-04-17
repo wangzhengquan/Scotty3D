@@ -8,6 +8,10 @@
 #include <vector>
 
 struct ApertureShape {
+	// enum Type {
+	// 	Rectangle = 1,
+	// 	Circle = 2,
+	// } ;
 	uint32_t id; // unique id for this aperture shape (used for loading/saving!)
 	             // (sample id '1' is rectangle)
 	std::string name; // human-readable pattern name

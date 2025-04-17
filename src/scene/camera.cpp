@@ -3,9 +3,9 @@
 #include "../pathtracer/samplers.h"
 #include "../test.h"
 
+
 std::pair<Ray, float> Camera::sample_ray(RNG &rng, uint32_t px, uint32_t py) {
 	//A3T1 - step 1 - camera rays
-
 	//Sample a ray that starts at the origin and passes through pixel (px,py) + random offset on the sensor plane.
 	//
 	//Because cameras look down the -z axis, the "sensor plane" is
@@ -18,34 +18,48 @@ std::pair<Ray, float> Camera::sample_ray(RNG &rng, uint32_t px, uint32_t py) {
 	//  sensor pixel location (0,0) maps to (-w/2,-h/2,-1),
 	//  and sensor pixel location (film.width,film.height) maps to (w/2,h/2,-1).
 
-	//Compute the position on the sensor (in pixels):
+	// Sample random offset within pixel
 	Samplers::Rect s;
 	Vec2 offset = s.sample(rng);
 	float offset_pdf = s.pdf(offset);
-	// Vec2 sensor_pixel = Vec2(float(px), float(py)) + offset;
 
-	//TODO: Transform from sensor pixels into world position on the sensor plane
-	//Calculate sensor plane dimensions
+	// Transform from sensor pixels into world position on the sensor plane
+	// Calculate sensor plane dimensions
 	float h = 2.0f * std::tan(Radians(vertical_fov) / 2.0f);
 	float w = aspect_ratio * h;
 
-	//Convert pixel coordinates to sensor plane coordinates
-	float u = (float(px) + offset.x) / float(film.width);  // [0,1]
-	float v = (float(py) + offset.y) / float(film.height); // [0,1]
-	
-	//Map to sensor plane [-w/2,w/2] x [-h/2,h/2] at z=-1
-	float x = (u - 0.5f) * w;
-	float y = (v - 0.5f) * h;
-	Vec3 sensor_pixel(x, y, -1.0f);
+	// Map to sensor plane
+	float u = (float(px) + offset.x) / float(film.width);
+	float v = (float(py) + offset.y) / float(film.height);
+	Vec3 sensor_point(
+			(u - 0.5f) * w * focal_dist,
+			(v - 0.5f) * h * focal_dist,
+			-focal_dist
+	);
 
-	//Build ray:
+	// Sample aperture position
+	Vec3 ray_origin(0.0f, 0.0f, 0.0f);
+	if (aperture_size > 0.0f) {
+		if (aperture_shape == 1) { // Rectangle
+			ray_origin = Vec3(
+				(rng.unit() - 0.5f) * aperture_size,
+				(rng.unit() - 0.5f) * aperture_size,
+				0.0f
+			);
+			
+		} else { // Circle
+			Vec2 aperture_sample = Samplers::Circle(Vec2(), aperture_size/2.0f).sample(rng);
+			ray_origin = Vec3(aperture_sample.x, aperture_sample.y, 0.0f);
+		}
+	}
+
+	// Build ray
 	Ray ray;
-	ray.point = Vec3(); //ray should start at the origin
-	// ray.dir = Vec3(0,0,-1); //TODO: compute from sensor plane position
-	ray.dir = sensor_pixel.unit(); // Direction through sensor point
-	ray.depth = film.max_ray_depth; //rays should, by default, go as deep as the max depth parameter allows
-	
-  return {ray, offset_pdf};
+	ray.point = ray_origin;
+	ray.dir = (sensor_point - ray_origin).unit();
+	ray.depth = film.max_ray_depth;
+
+	return {ray, offset_pdf};
 }
 
 

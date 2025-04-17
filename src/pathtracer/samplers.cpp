@@ -9,10 +9,14 @@ namespace Samplers {
 Vec2 Rect::sample(RNG &rng) const {
 	//A3T1 - step 2 - supersampling
 
-    // Return a point selected uniformly at random from the rectangle [0,size.x)x[0,size.y)
-    // Useful function: rng.unit()
-
-    return Vec2{};
+	// Return a point selected uniformly at random from the rectangle [0,size.x)x[0,size.y)
+	// Useful function: rng.unit()
+	// Generate two random numbers in [0,1)
+	float u = rng.unit();
+	float v = rng.unit();
+	
+	// Scale to the rectangle's dimensions
+	return Vec2{u * size.x, v * size.y};
 }
 
 float Rect::pdf(Vec2 at) const {
@@ -23,11 +27,12 @@ float Rect::pdf(Vec2 at) const {
 Vec2 Circle::sample(RNG &rng) const {
 	//A3EC - bokeh - circle sampling
 
-    // Return a point selected uniformly at random from a circle defined by its
+  // Return a point selected uniformly at random from a circle defined by its
 	// center and radius.
-    // Useful function: rng.unit()
-
-    return Vec2{};
+	// Uniform sampling in unit circle
+	float theta = 2.0f * PI_F * rng.unit();
+	float r = std::sqrt(rng.unit()) * radius;
+	return center + Vec2(r * std::cos(theta), r * std::sin(theta));
 }
 
 float Circle::pdf(Vec2 at) const {
@@ -36,7 +41,9 @@ float Circle::pdf(Vec2 at) const {
 	// Return the pdf of sampling the point 'at' for a circle defined by its
 	// center and radius.
 
-    return 1.f;
+  Vec2 delta = at - center;
+	if (delta.norm() > radius) return 0.0f;
+	return 1.0f / (PI_F * radius * radius);
 }
 
 Vec3 Point::sample(RNG &rng) const {
