@@ -15,7 +15,7 @@ void Halfedge_Mesh::interpolate_data(std::vector< VertexCRef > const &from, Vert
 	assert(from.size() >= 1);
 
 	std::map< uint32_t, float > weights;
-	for (VertexCRef const v : from) {
+	for (VertexCRef const & v : from) {
 		for (Vertex::Bone_Weight const &bw : v->bone_weights) {
 			weights.emplace(bw.bone, 0.0f).first->second += bw.weight;
 		}
@@ -35,7 +35,7 @@ void Halfedge_Mesh::interpolate_data(std::vector< HalfedgeCRef > const &from, Ha
 	Vec2 uv_sum = Vec2(0.0f, 0.0f);
 	Vec3 normal_sum = Vec3(0.0f, 0.0f, 0.0f);
 
-	for (HalfedgeCRef const h : from) {
+	for (HalfedgeCRef const & h : from) {
 		uv_sum += h->corner_uv;
 		normal_sum += h->corner_normal;
 	}

@@ -26,7 +26,7 @@ namespace sejp {
 		std::optional< std::string > const &as_string() const;
 		std::optional< double > const &as_number() const;
 		std::optional< bool > const &as_bool() const;
-		std::optional< nullptr_t > const &as_null() const;
+		std::optional< std::nullptr_t > const &as_null() const;
 		std::optional< std::vector< value > > const &as_array() const;
 		std::optional< std::map< std::string, value > > const &as_object() const;
 	};

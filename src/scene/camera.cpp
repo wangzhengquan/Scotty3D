@@ -19,47 +19,49 @@ std::pair<Ray, float> Camera::sample_ray(RNG &rng, uint32_t px, uint32_t py) {
 	//  and sensor pixel location (film.width,film.height) maps to (w/2,h/2,-1).
 
 	// Sample random offset within pixel
-	Samplers::Rect s;
-	Vec2 offset = s.sample(rng);
-	float offset_pdf = s.pdf(offset);
+	// --- 1. 像素内抗锯齿采样（始终用 Rect）---
+	Samplers::Rect pixel_sampler; // 单位矩形采样器
+	Vec2 offset = pixel_sampler.sample(rng);
+	float offset_pdf = pixel_sampler.pdf(offset); // 固定为 1.0
 
-	// Transform from sensor pixels into world position on the sensor plane
-	// Calculate sensor plane dimensions
+	// --- 2. 计算传感器平面坐标 ---
 	float h = 2.0f * std::tan(Radians(vertical_fov) / 2.0f);
 	float w = aspect_ratio * h;
-
-	// Map to sensor plane
-	float u = (float(px) + offset.x) / float(film.width);
-	float v = (float(py) + offset.y) / float(film.height);
 	Vec3 sensor_point(
-			(u - 0.5f) * w * focal_dist,
-			(v - 0.5f) * h * focal_dist,
+			((px + offset.x) / film.width - 0.5f) * w * focal_dist,
+			((py + offset.y) / film.height - 0.5f) * h * focal_dist,
 			-focal_dist
 	);
 
-	// Sample aperture position
+	// --- 3. 光圈采样（根据形状切换采样器）---
 	Vec3 ray_origin(0.0f, 0.0f, 0.0f);
+	float aperture_pdf = 1.0f; // 默认值（无光圈时）
+	
 	if (aperture_size > 0.0f) {
-		if (aperture_shape == 1) { // Rectangle
-			ray_origin = Vec3(
-				(rng.unit() - 0.5f) * aperture_size,
-				(rng.unit() - 0.5f) * aperture_size,
-				0.0f
-			);
-			
-		} else { // Circle
-			Vec2 aperture_sample = Samplers::Circle(Vec2(), aperture_size/2.0f).sample(rng);
-			ray_origin = Vec3(aperture_sample.x, aperture_sample.y, 0.0f);
+		if (aperture_shape == 2) { 
+				// 圆形光圈采样
+				Samplers::Circle circle_sampler(Vec2(), aperture_size / 2.0f);
+				Vec2 aperture_sample = circle_sampler.sample(rng);
+				ray_origin = Vec3(aperture_sample.x, aperture_sample.y, 0.0f);
+				aperture_pdf = circle_sampler.pdf(aperture_sample); // 1/(πr²)
+		} else {
+				// 矩形光圈采样
+				Samplers::Rect rect_sampler(Vec2(aperture_size, aperture_size));
+				Vec2 aperture_sample = rect_sampler.sample(rng) - Vec2(aperture_size / 2.0f);
+				ray_origin = Vec3(aperture_sample.x, aperture_sample.y, 0.0f);
+				aperture_pdf = rect_sampler.pdf(aperture_sample + Vec2(aperture_size / 2.0f)); // 1/(aperture_size²)
 		}
 	}
 
-	// Build ray
+	// --- 4. 构建光线 ---
 	Ray ray;
 	ray.point = ray_origin;
 	ray.dir = (sensor_point - ray_origin).unit();
 	ray.depth = film.max_ray_depth;
 
-	return {ray, offset_pdf};
+	// --- 5. 联合概率密度计算 ---
+	float total_pdf = offset_pdf * aperture_pdf;
+	return {ray, total_pdf};
 }
 
 

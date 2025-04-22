@@ -3,6 +3,7 @@
 
 #include "samplers.h"
 #include "tri_mesh.h"
+#include <iostream>
 
 namespace PT {
 
@@ -18,31 +19,56 @@ BBox Triangle::bbox() const {
     BBox box;
     return box;
 }
+ 
 
 Trace Triangle::hit(const Ray& ray) const {
 	//A3T2
-	
-	// Each vertex contains a postion and surface normal
-    Tri_Mesh_Vert v_0 = vertex_list[v0];
-    Tri_Mesh_Vert v_1 = vertex_list[v1];
-    Tri_Mesh_Vert v_2 = vertex_list[v2];
-    (void)v_0;
-    (void)v_1;
-    (void)v_2;
 
-    // TODO (PathTracer): Task 2
-    // Intersect the ray with the triangle defined by the three vertices.
+	// Get triangle vertices
+	Tri_Mesh_Vert v_0 = vertex_list[v0];
+	Tri_Mesh_Vert v_1 = vertex_list[v1];
+	Tri_Mesh_Vert v_2 = vertex_list[v2];
 
-    Trace ret;
-    ret.origin = ray.point;
-    ret.hit = false;       // was there an intersection?
-    ret.distance = 0.0f;   // at what distance did the intersection occur?
-    ret.position = Vec3{}; // where was the intersection?
-    ret.normal = Vec3{};   // what was the surface normal at the intersection?
-                           // (this should be interpolated between the three vertex normals)
-	ret.uv = Vec2{};	   // What was the uv associated with the point of intersection?
-						   // (this should be interpolated between the three vertex uvs)
-    return ret;
+	Trace ret;
+	ret.origin = ray.point;
+	ret.hit = false;
+
+	// Möller-Trumbore algorithm
+	Vec3 e1 = v_1.position - v_0.position;
+	Vec3 e2 = v_2.position - v_0.position;
+	Vec3 s = ray.point - v_0.position;
+	Vec3 s1 = cross(ray.dir, e2);
+	Vec3 s2 = cross(s, e1);
+
+	float divisor = dot(s1, e1);
+	if (divisor == 0.0f) return ret; // Ray parallel to triangle plane
+// std::cout << "divisor: " << divisor << ", " <<  dot(cross(ray.dir, e1), e2) << std::endl;
+	// Compute barycentric coordinates
+	float u = dot(s1, s) / divisor;
+	float v = dot(s2, ray.dir) / divisor;
+	float t = dot(s2, e2) / divisor;
+
+// std::cout << "\nu: " << u << ", " << dot(s1, s) << ", " <<  dot(cross(e2, s), ray.dir) << std::endl;
+// std::cout << "\nv: " << v << ", " << dot(s2, ray.dir)  << ", " <<  dot(cross(e1, ray.dir), s) << std::endl;
+// std::cout << "\nt: " << t << ", " << dot(s2, e2)  << ", " <<  dot(-cross(s, e2), e1) << std::endl;
+
+	// Check if intersection is within triangle and ray bounds
+	if (u >= 0.0f && v >= 0.0f && (u + v) <= 1.0f && 
+			t >= ray.dist_bounds.x && t <= ray.dist_bounds.y) {
+			
+			ret.hit = true;
+			ret.distance = t;
+			ret.position = ray.at(t);
+			
+			// Interpolate normal
+			float w = 1.0f - u - v;
+			ret.normal = (w * v_0.normal + u * v_1.normal + v * v_2.normal).unit();
+			
+			// Interpolate UV coordinates 
+			ret.uv = w * v_0.uv + u * v_1.uv + v * v_2.uv;
+	}
+
+	return ret;
 }
 
 Triangle::Triangle(Tri_Mesh_Vert* verts, uint32_t v0, uint32_t v1, uint32_t v2)

@@ -41,11 +41,12 @@ public:
 
 	uint32_t visualize(GL::Lines& lines, GL::Lines& active, uint32_t level, Mat4 vtrans) const {
 		if (has_transform) vtrans = vtrans * T;
-		return std::visit(overloaded{[&](const Tri_Mesh* mesh) {
-										 return mesh->visualize(lines, active, level, vtrans);
-									 },
-		                             [](const auto&) { return 0u; }},
-		                  geometry);
+		return std::visit(overloaded{
+			[&](const Tri_Mesh* mesh) {
+				return mesh->visualize(lines, active, level, vtrans);
+			},
+			[](const auto&) { return 0u; }
+		}, geometry);
 	}
 
 	Vec3 sample(RNG &rng, Vec3 from) const {

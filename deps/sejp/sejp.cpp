@@ -333,9 +333,9 @@ std::optional< bool > const &value::as_bool() const {
 	}
 }
 
-std::optional< nullptr_t > const &value::as_null() const {
-	static std::optional< nullptr_t > const null_value(nullptr);
-	static std::optional< nullptr_t > const empty;
+std::optional< std::nullptr_t > const &value::as_null() const {
+	static std::optional< std::nullptr_t > const null_value(nullptr);
+	static std::optional< std::nullptr_t > const empty;
 	if ((index & TypeBits) == Null) {
 		return null_value;
 	} else {

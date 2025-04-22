@@ -18,26 +18,53 @@ BBox Sphere::bbox() const {
 	return box;
 }
 
-PT::Trace Sphere::hit(Ray ray) const {
+PT::Trace Shapes::Sphere::hit(Ray ray) const {
 	//A3T2 - sphere hit
 
-    // TODO (PathTracer): Task 2
-    // Intersect this ray with a sphere of radius Sphere::radius centered at the origin.
+	// Intersect this ray with a sphere of radius Sphere::radius centered at the origin.
 
-    // If the ray intersects the sphere twice, ret should
-    // represent the first intersection, but remember to respect
-    // ray.dist_bounds! For example, if there are two intersections,
-    // but only the _later_ one is within ray.dist_bounds, you should
-    // return that one!
+	// If the ray intersects the sphere twice, ret should
+	// represent the first intersection, but remember to respect
+	// ray.dist_bounds! For example, if there are two intersections,
+	// but only the _later_ one is within ray.dist_bounds, you should
+	// return that one!
 
-    PT::Trace ret;
-    ret.origin = ray.point;
-    ret.hit = false;       // was there an intersection?
-    ret.distance = 0.0f;   // at what distance did the intersection occur?
-    ret.position = Vec3{}; // where was the intersection?
-    ret.normal = Vec3{};   // what was the surface normal at the intersection?
-	ret.uv = Vec2{}; 	   // what was the uv coordinates at the intersection? (you may find Sphere::uv to be useful)
-    return ret;
+	PT::Trace ret;
+	ret.origin = ray.point;
+	ret.hit = false;
+
+	// Quadratic equation coefficients
+	Vec3 oc = ray.point; // Sphere center is at (0,0,0) in local space
+	float a = ray.dir.norm_squared();
+	float b = 2.0f * dot(oc, ray.dir);
+	float c = oc.norm_squared() - radius * radius;
+
+	// Discriminant
+	float discriminant = b * b - 4 * a * c;
+	if (discriminant < 0.0f) return ret; // No intersection
+
+	float sqrt_discriminant = std::sqrt(discriminant);
+	float t1 = (-b - sqrt_discriminant) / (2.0f * a);
+	float t2 = (-b + sqrt_discriminant) / (2.0f * a);
+
+	// Find the closest valid intersection
+	float t = t1;
+	if (t < ray.dist_bounds.x || t > ray.dist_bounds.y) {
+			t = t2;
+			if (t < ray.dist_bounds.x || t > ray.dist_bounds.y) {
+					return ret; // Both intersections out of bounds
+			}
+	}
+
+	ret.hit = true;
+	ret.distance = t;
+	ret.position = ray.at(t);
+	ret.normal = ret.position.unit(); // Normal points outward
+	
+	// Compute UV coordinates using spherical mapping
+	ret.uv = Sphere::uv(ret.normal);
+
+	return ret;
 }
 
 Vec3 Sphere::sample(RNG &rng, Vec3 from) const {
