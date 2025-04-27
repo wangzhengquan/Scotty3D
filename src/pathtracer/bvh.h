@@ -56,7 +56,8 @@ private:
 	size_t new_node(BBox box = {}, size_t start = 0, size_t size = 0, size_t l = 0, size_t r = 0);
 	
 	size_t build_node(typename std::vector<Primitive>::iterator first, typename std::vector<Primitive>::iterator last, size_t max_leaf_size);	
-	size_t partition( size_t lo, size_t hi, std::function<bool(Primitive&, Primitive&)> less);
+	inline std::pair<int, float> find_split_panel_by_center_of_axis(const BBox& bb);
+	// size_t partition( size_t lo, size_t hi, std::function<bool(Primitive&, Primitive&)> less);
 };
 
 } // namespace PT

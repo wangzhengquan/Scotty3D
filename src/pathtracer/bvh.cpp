@@ -21,27 +21,19 @@ struct SAHBucketData {
 	size_t num_prims; ///< number of primitives in the bucket
 };
 
-// template<typename Primitive>
-// void BVH<Primitive>::build(std::vector<Primitive>&& prims, size_t max_leaf_size) {
-// 	//A3T3 - build a bvh
-
-// 	// Keep these
-// 	nodes.clear();
-// 	primitives = std::move(prims);
-// 	// Construct a BVH from the given vector of primitives and maximum leaf
-// 	// size configuration.
- 
-// }
-// In src/pathtracer/bvh.cpp
 template<typename Primitive>
 void BVH<Primitive>::build(std::vector<Primitive>&& prims, size_t max_leaf_size) {
-	std::cout << "max_leaf_size:" << max_leaf_size << std::endl;
-    nodes.clear();
-    primitives = std::move(prims);
-    if (primitives.empty()) return;
-    root_idx = build_node(primitives.begin(), primitives.end(), max_leaf_size);
-}
+	//A3T3 - build a bvh
 
+	// Keep these
+	nodes.clear();
+	primitives = std::move(prims);
+	// Construct a BVH from the given vector of primitives and maximum leaf
+	// size configuration.
+  if (primitives.empty()) return;
+  root_idx = build_node(primitives.begin(), primitives.end(), max_leaf_size);
+}
+ 
 template<typename Primitive>
 size_t BVH<Primitive>::build_node(typename std::vector<Primitive>::iterator first, typename std::vector<Primitive>::iterator last, size_t max_leaf_size)
 {
@@ -58,26 +50,33 @@ size_t BVH<Primitive>::build_node(typename std::vector<Primitive>::iterator firs
 		return new_node(bb, start, size);
 	}
 
-	// Choose split axis (longest axis)
-	Vec3 extent = bb.max - bb.min;
-	int axis = extent.x > extent.y ? (extent.x > extent.z ? 0 : 2) : (extent.y > extent.z ? 1 : 2);
-  Vec3 pivot = bb.center();
+	auto [axis, pivot] = find_split_panel_by_center_of_axis(bb);
 	auto middle = std::partition(first, last, [&](const Primitive& em) {
-		return em.bbox().center()[axis] < pivot[axis]; 
+		return em.bbox().center()[axis] < pivot; 
 	});
 	 
-	if (middle != first) {
+	if (middle == first || middle == last) {
+		// std::cout << "size:" << size << std::endl;
+		return new_node(bb, start, size);
+	} else {
 		size_t l = build_node(first, middle, max_leaf_size);
 		size_t r = build_node(middle, last, max_leaf_size);
 		return new_node(bb, start, size, l, r);
-	} else {
-		std::cout << "size:" << size << std::endl;
-		return new_node(bb, start, size);
 	}
 	
 }
 
-template<typename Primitive> Trace BVH<Primitive>::hit(const Ray& ray) const {
+template<typename Primitive> 
+std::pair<int, float> BVH<Primitive>::find_split_panel_by_center_of_axis(const BBox& bb) {
+	Vec3 extent = bb.max - bb.min;
+	// Choose split axis (longest axis)
+	int axis = extent.x > extent.y ? (extent.x > extent.z ? 0 : 2) : (extent.y > extent.z ? 1 : 2);
+  float pivot = (bb.min[axis] + bb.max[axis]) * 0.5f;
+	return {axis, pivot};
+}
+
+template<typename Primitive> 
+Trace BVH<Primitive>::hit(const Ray& ray) const {
 	//A3T3 - traverse your BVH
 	// Implement ray - BVH intersection test. A ray intersects
 	// with a BVH aggregate if and only if it intersects a primitive in
