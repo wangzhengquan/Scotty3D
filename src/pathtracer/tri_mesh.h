@@ -33,6 +33,7 @@ public:
 
 	bool operator==(const Triangle& rhs) const;
 
+	uint32_t test = 0;
 private:
 	uint32_t v0, v1, v2;
 	Tri_Mesh_Vert* vertex_list;

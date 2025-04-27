@@ -64,6 +64,7 @@ public:
 		return std::visit([&](const auto& g) { return g->pdf(ray, pdf_T, pdf_iT); }, geometry);
 	}
 
+	uint32_t test = 1;
 private:
 	Mat4 T, iT;
 	bool has_transform = false;

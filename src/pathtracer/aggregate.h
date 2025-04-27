@@ -19,6 +19,7 @@ namespace PT {
 
 class Aggregate {
 public:
+uint32_t test = 2;
 	Aggregate(List<Instance>&& list) : underlying(std::move(list)) {
 	}
 	Aggregate(BVH<Instance>&& bvh) : underlying(std::move(bvh)) {

@@ -24,6 +24,21 @@ Test test_a3_task3_bbox_hit_simple("a3.task3.bbox.hit.simple", []() {
 	}
 });
 
+
+Test test_a3_task3_bbox_hit_flat("a3.task3.bbox.hit.flat", []() {
+	std::vector<Vec3> verts;
+	verts.push_back(Vec3(0, 0, 0));
+	verts.push_back(Vec3(1, 0, 0));
+	verts.push_back(Vec3(0, 1, 0));
+
+	Ray ray(Vec3(0, 0, -1), Vec3(0, 0, 1));
+	Vec2 dist_bounds = Vec2(0.f, FLT_MAX);
+
+	if (!try_intersect(verts, ray, dist_bounds)) {
+		throw Test::error("BBox did not detect any hits when it should!");
+	}
+});
+
 Test test_a3_task3_bbox_hit_simple_miss("a3.task3.bbox.hit.simple_miss", []() {
 	// bbox with lower left corner Vec3(0,0,0) and top right corner Vec3(1,1,0)
 	std::vector<Vec3> verts;

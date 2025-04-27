@@ -9,21 +9,25 @@ namespace PT {
 
 BBox Triangle::bbox() const {
 	//A3T2 / A3T3
+	// Compute the bounding box of the triangle.
 
-	// TODO (PathTracer): Task 2 or 3
-    // Compute the bounding box of the triangle.
-
-    // Beware of flat/zero-volume boxes! You may need to
-    // account for that here, or later on in BBox::hit.
-
-    BBox box;
-    return box;
+	// Beware of flat/zero-volume boxes! You may need to
+	// account for that here, or later on in BBox::hit.
+	BBox box;
+	 
+	box.enclose(vertex_list[v0].position);
+	box.enclose(vertex_list[v1].position);
+	box.enclose(vertex_list[v2].position);
+	// Ensure non-zero volume
+	if (box.min == box.max) {
+			box.max += Vec3(1e-5f);
+	}
+	return box;
 }
  
 
 Trace Triangle::hit(const Ray& ray) const {
 	//A3T2
-
 	// Get triangle vertices
 	Tri_Mesh_Vert v_0 = vertex_list[v0];
 	Tri_Mesh_Vert v_1 = vertex_list[v1];
@@ -54,20 +58,19 @@ Trace Triangle::hit(const Ray& ray) const {
 
 	// Check if intersection is within triangle and ray bounds
 	if (u >= 0.0f && v >= 0.0f && (u + v) <= 1.0f && 
-			t >= ray.dist_bounds.x && t <= ray.dist_bounds.y) {
-			
-			ret.hit = true;
-			ret.distance = t;
-			ret.position = ray.at(t);
-			
-			// Interpolate normal
-			float w = 1.0f - u - v;
-			ret.normal = (w * v_0.normal + u * v_1.normal + v * v_2.normal).unit();
-			
-			// Interpolate UV coordinates 
-			ret.uv = w * v_0.uv + u * v_1.uv + v * v_2.uv;
+		t >= ray.dist_bounds.x && t <= ray.dist_bounds.y) {
+		
+		ret.hit = true;
+		ret.distance = t;
+		ret.position = ray.at(t);
+		
+		// Interpolate normal
+		float w = 1.0f - u - v;
+		ret.normal = (w * v_0.normal + u * v_1.normal + v * v_2.normal).unit();
+		
+		// Interpolate UV coordinates 
+		ret.uv = w * v_0.uv + u * v_1.uv + v * v_2.uv;
 	}
-
 	return ret;
 }
 

@@ -85,8 +85,43 @@ struct BBox {
 		// If the ray intersected the bounding box within the range given by
 		// [times.x,times.y], update times with the new intersection times.
 		// This means at least one of tmin and tmax must be within the range
+		Vec3 invdir = 1.0 / ray.dir;
+		int sign[3];
+		sign[0] = (invdir.x < 0);
+		sign[1] = (invdir.y < 0);
+		sign[2] = (invdir.z < 0);
+		float tmin, tmax, tymin, tymax, tzmin, tzmax;
+    Vec3 bounds[2] = {min, max};
+    tmin = (bounds[sign[0]].x -ray.point.x) * invdir.x;
+    tmax = (bounds[1-sign[0]].x - ray.point.x) * invdir.x;
+    tymin = (bounds[sign[1]].y - ray.point.y) * invdir.y;
+    tymax = (bounds[1-sign[1]].y - ray.point.y) * invdir.y;
+    
+    if ((tmin > tymax) || (tymin > tmax))
+        return false;
 
-		return false;
+    if (tymin > tmin)
+        tmin = tymin;
+    if (tymax < tmax)
+        tmax = tymax;
+    
+    tzmin = (bounds[sign[2]].z - ray.point.z) * invdir.z;
+    tzmax = (bounds[1-sign[2]].z - ray.point.z) * invdir.z;
+    
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+
+    if (tzmin > tmin)
+        tmin = tzmin;
+    if (tzmax < tmax)
+        tmax = tzmax;
+
+		if (tmax <= times.x || tmin >= times.y) 
+			return false;
+				
+	  times.x = std::max(tmin, times.x);
+    times.y = std::min(tmax, times.y);
+    return true;
 	}
 
 	/// Get the eight corner points of the bounding box
@@ -131,7 +166,9 @@ struct BBox {
 		}
 	}
 
-	Vec3 min, max;
+	
+	Vec3 min;
+	Vec3 max;
 };
 
 inline std::ostream& operator<<(std::ostream& out, BBox b) {
