@@ -317,6 +317,7 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 	}
 	L /= edges.size();
 // std::cout << "L=" << L << std::endl;
+  [[maybe_unused]]
 	auto check = [this](Index id){
 		if (auto msg = validate()) {
 			// std::cout <<"before:\n"  << orginal_mesh.describe() << "\n\n" << orginal_mesh.describe2() << std::endl;
@@ -325,6 +326,7 @@ std::cout << "Isotropic Remeshing: params.outer_iterations=" << params.outer_ite
 		}
 	};
 
+  [[maybe_unused]]
 	auto peek_edge = [this](EdgeRef e) {
 		HalfedgeRef h = e->halfedge;
 		std::map<uint32_t, FaceRef> incident_faces;

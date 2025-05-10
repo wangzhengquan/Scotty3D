@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <mutex>
 #include <string>
+#include <iostream>
 
 inline std::mutex printf_lock;
 
@@ -58,3 +59,4 @@ inline std::string last_file(std::string path) {
 #define assert2(expr, fmt, ...)      \
   do { if (!(expr)) {warn(#expr ": " fmt, ##__VA_ARGS__); std::exit(__LINE__);}} while (0)
 
+#define show(exp) std::cout << (#exp) << " = " << (exp) << std::endl

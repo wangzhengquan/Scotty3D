@@ -1,6 +1,7 @@
 
 #include "material.h"
 #include "../util/rand.h"
+#include "../lib/log.h"
 
 namespace Materials {
 
@@ -35,38 +36,46 @@ float schlick(Vec3 in_dir, float index_of_refraction) {
 	return 0.0f;
 }
 
+/**
+ * Compute the ratio of outgoing/incoming radiance when light from in_dir is reflected through out_dir: (albedo / PI_F) * cos(theta).
+ * Note that for Scotty3D, y is the 'up' direction.
+*/
 Spectrum Lambertian::evaluate(Vec3 out, Vec3 in, Vec2 uv) const {
 	//A3T4: Materials - Lambertian BSDF evaluation
 
-    // Compute the ratio of outgoing/incoming radiance when light from in_dir
-    // is reflected through out_dir: (albedo / PI_F) * cos(theta).
-    // Note that for Scotty3D, y is the 'up' direction.
-
-    return Spectrum{};
+  float cos_theta = in.y;
+  if (cos_theta <= 0.0f) return Spectrum{}; // Light coming from below
+  
+  // Get albedo from texture and divide by PI for energy conservation
+  // Lambertian BRDF = albedo * cosθ_i/π 
+  return albedo.lock()->evaluate(uv) * (cos_theta / PI_F);
 }
 
+/**
+ * Select a scattered light direction at random from the Lambertian BSDF
+*/
 Scatter Lambertian::scatter(RNG &rng, Vec3 out, Vec2 uv) const {
 	//A3T4: Materials - Lambertian BSDF scattering
-	//Select a scattered light direction at random from the Lambertian BSDF
-
-	[[maybe_unused]] Samplers::Hemisphere::Cosine sampler; //this will be useful
-
-	Scatter ret;
-	//TODO: sample the direction the light was scatter from from a cosine-weighted hemisphere distribution:
-	ret.direction = Vec3{};
-
-	//TODO: compute the attenuation of the light using Lambertian::evaluate():
-	ret.attenuation = Spectrum{};
-
-	return ret;
+	 
+  Scatter ret;
+  // Sample direction from cosine-weighted hemisphere
+  Samplers::Hemisphere::Cosine sampler;
+  // sample the direction the light was scatter from from a cosine-weighted hemisphere distribution:
+  ret.direction = sampler.sample(rng);
+  
+  // compute the attenuation of the light using Lambertian::evaluate()
+  ret.attenuation = evaluate(out, ret.direction, uv); 
+  return ret;
 }
 
+/**
+ * Compute the PDF for sampling in_dir from the cosine-weighted hemisphere distribution.
+*/
 float Lambertian::pdf(Vec3 out, Vec3 in) const {
 	//A3T4: Materials - Lambertian BSDF probability density function
-    // Compute the PDF for sampling in_dir from the cosine-weighted hemisphere distribution.
-	[[maybe_unused]] Samplers::Hemisphere::Cosine sampler; //this might be handy!
-
-    return 0.0f;
+  
+	Samplers::Hemisphere::Cosine sampler; //this might be handy!
+  return sampler.pdf(in);
 }
 
 Spectrum Lambertian::emission(Vec2 uv) const {

@@ -392,6 +392,9 @@ inline Mat4 Mat4::inverse(const Mat4& m) {
 	return r;
 }
 
+/**
+ * 以dir为y轴建立坐标系
+*/
 inline Mat4 Mat4::rotate_to(Vec3 dir) {
 
 	dir.normalize();

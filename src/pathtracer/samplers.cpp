@@ -6,11 +6,12 @@ constexpr bool IMPORTANCE_SAMPLING = true;
 
 namespace Samplers {
 
+/**
+ *  Return a point selected uniformly at random from the rectangle [0,size.x)x[0,size.y)
+*/
 Vec2 Rect::sample(RNG &rng) const {
 	//A3T1 - step 2 - supersampling
 
-	// Return a point selected uniformly at random from the rectangle [0,size.x)x[0,size.y)
-	// Useful function: rng.unit()
 	// Generate two random numbers in [0,1)
 	float u = rng.unit();
 	float v = rng.unit();
@@ -19,27 +20,30 @@ Vec2 Rect::sample(RNG &rng) const {
 	return Vec2{u * size.x, v * size.y};
 }
 
+// probability density function
 float Rect::pdf(Vec2 at) const {
 	if (at.x < 0.0f || at.x > size.x || at.y < 0.0f || at.y > size.y) return 0.0f;
 	return 1.0f / (size.x * size.y);
 }
 
+/**
+ * Return a point selected uniformly at random from a circle defined by its center and radius.
+*/
 Vec2 Circle::sample(RNG &rng) const {
 	//A3EC - bokeh - circle sampling
-
-  // Return a point selected uniformly at random from a circle defined by its
-	// center and radius.
+  
 	// Uniform sampling in unit circle
 	float theta = 2.0f * PI_F * rng.unit();
 	float r = std::sqrt(rng.unit()) * radius;
 	return center + Vec2(r * std::cos(theta), r * std::sin(theta));
 }
 
+/**
+ * probability density function
+ * Return the pdf of sampling the point 'at' for a circle defined by its center and radius.
+ */
 float Circle::pdf(Vec2 at) const {
 	//A3EC - bokeh - circle pdf
-
-	// Return the pdf of sampling the point 'at' for a circle defined by its
-	// center and radius.
 
   Vec2 delta = at - center;
 	if (delta.norm() > radius) return 0.0f;
@@ -95,12 +99,12 @@ float Hemisphere::Uniform::pdf(Vec3 dir) const {
 Vec3 Hemisphere::Cosine::sample(RNG &rng) const {
 
 	float phi = rng.unit() * 2.0f * PI_F;
-	float cos_t = std::sqrt(rng.unit());
+	float cos_theta = std::sqrt(rng.unit());
 
-	float sin_t = std::sqrt(1 - cos_t * cos_t);
-	float x = std::cos(phi) * sin_t;
-	float z = std::sin(phi) * sin_t;
-	float y = cos_t;
+	float sin_theta = std::sqrt(1 - cos_theta * cos_theta);
+	float x = std::cos(phi) * sin_theta;
+	float z = std::sin(phi) * sin_theta;
+	float y = cos_theta;
 
 	return Vec3(x, y, z);
 }

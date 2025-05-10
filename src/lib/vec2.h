@@ -170,7 +170,7 @@ inline Vec2 operator+(float s, Vec2 v) {
 	return Vec2(v.x + s, v.y + s);
 }
 inline Vec2 operator-(float s, Vec2 v) {
-	return Vec2(v.x - s, v.y - s);
+	return Vec2(s - v.x , s - v.y);
 }
 inline Vec2 operator*(float s, Vec2 v) {
 	return Vec2(v.x * s, v.y * s);

@@ -572,11 +572,12 @@ COMPARE_BY_ADDRESS(EdgeCRef);
 COMPARE_BY_ADDRESS(FaceCRef);
 #undef COMPARE_BY_ADDRESS
 
-/*
+
+namespace std {
+  /*
 	Some containers need to know how to hash references (std::unordered_map).
 	Here we simply hash the address of the element, since these are stable.
-*/
-namespace std {
+  */
 	#define HASH_BY_ADDRESS( T ) \
 		template<> struct hash< T > { \
 			uint64_t operator()(T const & key) const { \
@@ -593,19 +594,19 @@ namespace std {
 	HASH_BY_ADDRESS( Halfedge_Mesh::FaceCRef );
 	HASH_BY_ADDRESS( Halfedge_Mesh::HalfedgeCRef );
 	#undef HASH_BY_ADDRESS
+
+  // hash for std::pair
+  template< typename A, typename B >
+  struct hash< std::pair< A, B > > {
+    size_t operator()(std::pair< A, B > const &key) const {
+      static const std::hash< A > ha;
+      static const std::hash< B > hb;
+      size_t hf = ha(key.first);
+      size_t hs = hb(key.second);
+      //NOTE: if this were C++20 we could use std::rotr or std::rotl
+      return hf ^ (hs << (sizeof(size_t)*4)) ^ (hs >> (sizeof(size_t)*4));
+    }
+  };
 } // namespace std
 
-
-namespace std {
-template< typename A, typename B >
-struct hash< std::pair< A, B > > {
-	size_t operator()(std::pair< A, B > const &key) const {
-		static const std::hash< A > ha;
-		static const std::hash< B > hb;
-		size_t hf = ha(key.first);
-		size_t hs = hb(key.second);
-		//NOTE: if this were C++20 we could use std::rotr or std::rotl
-		return hf ^ (hs << (sizeof(size_t)*4)) ^ (hs >> (sizeof(size_t)*4));
-	}
-};
-}
+ 

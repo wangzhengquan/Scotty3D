@@ -3,6 +3,7 @@
 #include "scene/texture.h"
 #include "util/rand.h"
 
+
 Test test_a3_task4_bsdf_lambertian_simple("a3.task4.bsdf.lambertian.simple", []() {
 	// This test just checks that the sample function produces a valid sample.
 

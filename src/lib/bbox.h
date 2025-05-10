@@ -78,52 +78,83 @@ struct BBox {
 		return *this;
 	}
 
+
+	/**
+	 * Implement ray - bounding box intersection test
+	 * If the ray intersected the bounding box within the range given by
+	 * [times.x,times.y], update times with the new intersection times.
+	 * This means at least one of tmin and tmax must be within the range
+	*/
 	bool hit(const Ray& ray, Vec2& times) const {
 		//A3T3 - bbox hit
 
-		// Implement ray - bounding box intersection test
-		// If the ray intersected the bounding box within the range given by
-		// [times.x,times.y], update times with the new intersection times.
-		// This means at least one of tmin and tmax must be within the range
+		// Vec3 inv_dir(
+		// 	ray.dir.x == 0.0f ? FLT_MAX : 1.0f / ray.dir.x, 
+		// 	ray.dir.y == 0.0f ? FLT_MAX : 1.0f / ray.dir.y, 
+		// 	ray.dir.z == 0.0f ? FLT_MAX : 1.0f / ray.dir.z  
+		// );
+		Vec3 inv_dir = 1.0 / ray.dir;
+		Vec3 t0 = (min - ray.point) * inv_dir;
+		Vec3 t1 = (max - ray.point) * inv_dir;
+
+		Vec3 tmin = hmin(t0, t1);
+	 	Vec3 tmax = hmax(t0, t1);
+
+		float tnear = std::max(tmin.x, std::max(tmin.y, tmin.z));
+		float tfar = std::min(tmax.x, std::min(tmax.y, tmax.z));
+		if (tnear > tfar  ) return false;
+		if (tfar <= times.x || tnear >= times.y) return false;
+		times.x = std::max(tnear, times.x);
+		times.y = std::min(tfar, times.y);
+		return true;
+	}
+	
+	/**
+	 * https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection.html
+	*/
+/*	
+	bool hit(const Ray& ray, Vec2& times) const {
+		//A3T3 - bbox hit
 		Vec3 invdir = 1.0 / ray.dir;
 		int sign[3];
 		sign[0] = (invdir.x < 0);
 		sign[1] = (invdir.y < 0);
 		sign[2] = (invdir.z < 0);
 		float tmin, tmax, tymin, tymax, tzmin, tzmax;
-    Vec3 bounds[2] = {min, max};
-    tmin = (bounds[sign[0]].x -ray.point.x) * invdir.x;
-    tmax = (bounds[1-sign[0]].x - ray.point.x) * invdir.x;
-    tymin = (bounds[sign[1]].y - ray.point.y) * invdir.y;
-    tymax = (bounds[1-sign[1]].y - ray.point.y) * invdir.y;
-    
-    if ((tmin > tymax) || (tymin > tmax))
-        return false;
+		Vec3 bounds[2] = {min, max};
+		tmin = (bounds[sign[0]].x -ray.point.x) * invdir.x;
+		tmax = (bounds[1-sign[0]].x - ray.point.x) * invdir.x;
+		tymin = (bounds[sign[1]].y - ray.point.y) * invdir.y;
+		tymax = (bounds[1-sign[1]].y - ray.point.y) * invdir.y;
+		
+		if ((tmin > tymax) || (tymin > tmax))
+			return false;
 
-    if (tymin > tmin)
-        tmin = tymin;
-    if (tymax < tmax)
-        tmax = tymax;
-    
-    tzmin = (bounds[sign[2]].z - ray.point.z) * invdir.z;
-    tzmax = (bounds[1-sign[2]].z - ray.point.z) * invdir.z;
-    
-    if ((tmin > tzmax) || (tzmin > tmax))
-        return false;
+		if (tymin > tmin)
+			tmin = tymin;
+		if (tymax < tmax)
+			tmax = tymax;
+		
+		tzmin = (bounds[sign[2]].z - ray.point.z) * invdir.z;
+		tzmax = (bounds[1-sign[2]].z - ray.point.z) * invdir.z;
+		
+		if ((tmin > tzmax) || (tzmin > tmax))
+			return false;
 
-    if (tzmin > tmin)
-        tmin = tzmin;
-    if (tzmax < tmax)
-        tmax = tzmax;
+		if (tzmin > tmin)
+			tmin = tzmin;
+		if (tzmax < tmax)
+			tmax = tzmax;
 
 		if (tmax <= times.x || tmin >= times.y) 
 			return false;
 				
-	  times.x = std::max(tmin, times.x);
-    times.y = std::min(tmax, times.y);
-    return true;
+	  	times.x = std::max(tmin, times.x);
+		times.y = std::min(tmax, times.y);
+		return true;
 	}
-
+*/
+	
 	/// Get the eight corner points of the bounding box
 	std::vector<Vec3> corners() const {
 		std::vector<Vec3> ret(8);
