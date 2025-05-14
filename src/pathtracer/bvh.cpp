@@ -80,18 +80,6 @@ Trace BVH<Primitive>::hit(const Ray& ray) const {
   // Implement ray - BVH intersection test. A ray intersects
   // with a BVH aggregate if and only if it intersects a primitive in
   // the BVH that is not an aggregate.
-
-  // The starter code simply iterates through all the primitives.
-  // Again, remember you can use hit() on any Primitive value.
-
-  //TODO: replace this code with a more efficient traversal:
-  // Trace ret;
-  // for(const Primitive& prim : primitives) {
-  //     Trace hit = prim.hit(ray);
-  //     ret = Trace::min(ret, hit);
-  // }
-  // return ret;
-
   Trace ret;
   if (nodes.empty()) return ret;
   
@@ -111,6 +99,7 @@ Trace BVH<Primitive>::hit(const Ray& ray) const {
       if (hit_l && hit_r) {
         const Node *first, *second;
         float t1, t2;
+        (void)t1;  // 显式忽略未使用的变量
         if (t_l.x <= t_r.x ) {
           first = &l;
           second = &r;
@@ -126,14 +115,12 @@ Trace BVH<Primitive>::hit(const Ray& ray) const {
         if(!ret.hit || t2 < ret.distance) {
           find_closest_hit(*second);
         }
-        
       } else if(hit_l ){
         find_closest_hit(l);
 
       } else if (hit_r) {
         find_closest_hit(r);
       }
-      
     }
   };
 
@@ -170,12 +157,36 @@ template<typename Primitive> Vec3 BVH<Primitive>::sample(RNG &rng, Vec3 from) co
 
 template<typename Primitive>
 float BVH<Primitive>::pdf(Ray ray, const Mat4& T, const Mat4& iT) const {
+  // if (primitives.empty()) return 0.0f;
+  // float ret = 0.0f;
+  // for (auto& prim : primitives) ret += prim.pdf(ray, T, iT);
+  // return ret / primitives.size();
+
   if (primitives.empty()) return 0.0f;
   float ret = 0.0f;
-  for (auto& prim : primitives) ret += prim.pdf(ray, T, iT);
+  std::function<void(const Node& node)> find_hit = [&](const Node& node) {
+    if (node.is_leaf()) {
+      for (size_t i = node.start; i < node.start + node.size; i++) {
+        ret += primitives[i].pdf(ray, T, iT);
+      }
+    } else {
+      Vec2 t_l(0.f, FLT_MAX), t_r(0.f, FLT_MAX);
+      const Node& l = nodes[node.l];
+      const Node& r = nodes[node.r];
+      if(l.bbox.hit(ray, t_l) ){
+        find_hit(l);
+      } 
+      if (r.bbox.hit(ray, t_r)) {
+        find_hit(r);
+      }
+    }
+  };
+
+  find_hit(nodes[root_idx]);
   return ret / primitives.size();
 }
 
+ 
 template<typename Primitive> void BVH<Primitive>::clear() {
   nodes.clear();
   primitives.clear();

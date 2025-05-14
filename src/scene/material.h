@@ -74,8 +74,8 @@ class Mirror {
 public:
 	Spectrum evaluate(Vec3 out, Vec3 in, Vec2 uv) const;
 	Scatter scatter(RNG &rng, Vec3 out, Vec2 uv) const;
-	float pdf(Vec3 out, Vec3 in) const;
-	Spectrum emission(Vec2 uv) const;
+	float pdf(Vec3 out, Vec3 in) const {return 1.0f;}
+	Spectrum emission(Vec2 uv) const {return {};}
 
 	constexpr bool is_emissive() const { return false; }
 	constexpr bool is_specular() const { return true; }
@@ -97,18 +97,18 @@ class Refract {
 public:
 	Spectrum evaluate(Vec3 out, Vec3 in, Vec2 uv) const;
 	Scatter scatter(RNG &rng, Vec3 out, Vec2 uv) const;
-	float pdf(Vec3 out, Vec3 in) const;
-	Spectrum emission(Vec2 uv) const;
+	float pdf(Vec3 out, Vec3 in) const {return 1.0f;}
+	Spectrum emission(Vec2 uv) const {return {};}
 
-	bool is_emissive() const;
-	bool is_specular() const;
-	bool is_sided() const;
+	constexpr bool is_emissive() const {return false;}
+	constexpr bool is_specular() const {return true;}
+	constexpr bool is_sided() const {return true;}
 
 	std::weak_ptr<Texture> display() const;
 	void for_each(const std::function<void(std::weak_ptr<Texture>&)>& f);
 
 	std::weak_ptr<Texture> transmittance;
-	float ior = 1.5f;
+	float ior = 1.5f; // index_of_refraction
 
 	template< Intent I, typename F, typename T >
 	static void introspect(F&& f, T&& t) {
@@ -122,18 +122,18 @@ class Glass {
 public:
 	Spectrum evaluate(Vec3 out, Vec3 in, Vec2 uv) const;
 	Scatter scatter(RNG &rng, Vec3 out, Vec2 uv) const;
-	float pdf(Vec3 out, Vec3 in) const;
-	Spectrum emission(Vec2 uv) const;
-
-	bool is_emissive() const;
-	bool is_specular() const;
-	bool is_sided() const;
+	float pdf(Vec3 out, Vec3 in) const {return 1.0f;}
+	Spectrum emission(Vec2 uv) const {return {};}
+	
+	constexpr bool is_emissive() const {return false;}
+	constexpr bool is_specular() const {return true;}
+	constexpr bool is_sided() const {return true;}
 
 	std::weak_ptr<Texture> display() const;
 	void for_each(const std::function<void(std::weak_ptr<Texture>&)>& f);
 
 	std::weak_ptr<Texture> transmittance, reflectance;
-	float ior = 1.5f;
+	float ior = 1.5f; // // index_of_refraction
 
 	template< Intent I, typename F, typename T >
 	static void introspect(F&& f, T&& t) {
@@ -148,12 +148,12 @@ class Emissive {
 public:
 	Spectrum evaluate(Vec3 out, Vec3 in, Vec2 uv) const;
 	Scatter scatter(RNG &rng, Vec3 out, Vec2 uv) const;
-	float pdf(Vec3 out, Vec3 in) const;
-	Spectrum emission(Vec2 uv) const;
-
-	bool is_emissive() const;
-	bool is_specular() const;
-	bool is_sided() const;
+	float pdf(Vec3 out, Vec3 in) const {return 1.0f;}
+	Spectrum emission(Vec2 uv) const {return emissive.lock()->evaluate(uv);}
+	
+	constexpr bool is_emissive() const {return true;}
+	constexpr bool is_specular() const {return true;}
+	constexpr bool is_sided() const {return false;}
 
 	std::weak_ptr<Texture> display() const;
 	void for_each(const std::function<void(std::weak_ptr<Texture>&)>& f);

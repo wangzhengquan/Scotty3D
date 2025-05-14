@@ -104,7 +104,7 @@ private:
 	void log_ray(const Ray& ray, float t, Spectrum color = Spectrum{1.0f});
 
 	Aggregate scene;
-	List<Instance> emissive_objects;
+	BVH<Instance> emissive_objects;
 	std::vector<Light_Instance> point_lights;
 
 	Camera camera;

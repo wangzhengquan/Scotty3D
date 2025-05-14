@@ -8,9 +8,9 @@
 
 namespace PT {
 
-constexpr bool SAMPLE_AREA_LIGHTS = false;
+constexpr bool SAMPLE_AREA_LIGHTS = true;
 constexpr bool RENDER_NORMALS = false;
-constexpr bool LOG_CAMERA_RAYS = true;
+constexpr bool LOG_CAMERA_RAYS = false;
 constexpr bool LOG_AREA_LIGHT_RAYS = false;
 constexpr bool LOG_INDIR_LIGHT_RAYS = false;
 
@@ -26,7 +26,6 @@ Spectrum Pathtracer::sample_direct_lighting_task4(RNG &rng, const Shading_Info& 
   // Compute exact amount of light coming from delta lights:
 	//  (these don't need to be sampled)
   Spectrum radiance = sum_delta_lights(hit);
-
 	// ask hit.bsdf to sample an in direction that would scatter out along hit.out_dir
   Materials::Scatter scatter = hit.bsdf.scatter(rng, hit.out_dir, hit.uv);
   if (scatter.attenuation.luma() == 0.0f) return radiance;
@@ -45,34 +44,76 @@ Spectrum Pathtracer::sample_direct_lighting_task4(RNG &rng, const Shading_Info& 
       radiance += emissive * scatter.attenuation / pdf;
   }
 
-  // For specular materials, we don't need to divide by PDF
-  // if (hit.bsdf.is_specular()) {
-  //     radiance += scatter.attenuation * emissive;
-  // } else {
-  //     // For non-specular materials, weight by PDF
-  //     float pdf = hit.bsdf.pdf(hit.out_dir, scatter.direction);
-  //     if (pdf > 0.0f) {
-  //         radiance += scatter.attenuation * emissive / pdf;
-  //     }
-  // }
-  
   return radiance;
 }
 
 Spectrum Pathtracer::sample_direct_lighting_task6(RNG &rng, const Shading_Info& hit) {
-	//A3T6: Pathtracer - direct light sampling (mixture sampling)
-	// TODO (PathTracer): Task 6
-
-    // For task 6, we want to upgrade our direct light sampling procedure to also
-    // sample area lights using mixture sampling.
-	Spectrum radiance = sum_delta_lights(hit);
-
-	// Example of using log_ray():
-	if constexpr (LOG_AREA_LIGHT_RAYS) {
-		if (log_rng.coin_flip(0.001f)) log_ray(Ray(), 100.0f);
-	}
-
-	return radiance;
+    //A3T6: Pathtracer - direct light sampling (mixture sampling)
+    
+    // For specular materials like mirrors, we should handle them through indirect sampling
+    // as direct lighting can't effectively sample a delta distribution
+    // The reflection will be captured in sample_indirect_lighting instead
+    if (hit.bsdf.is_specular()) {
+      return sample_direct_lighting_task4(rng, hit);
+    }
+    
+    // Compute exact amount of light coming from delta lights:
+    // (these don't need to be sampled)
+    Spectrum radiance = sum_delta_lights(hit);
+   
+    // Multiple importance sampling: randomly choose between BSDF sampling and area light sampling
+    bool sample_bsdf = rng.coin_flip(0.5f);
+    
+    Spectrum attenuation;
+    Vec3 world_in_dir;
+    float sample_pdf = 0.0f;
+    
+    if (sample_bsdf) {
+      // Sample BSDF (same as task4)
+      Materials::Scatter scatter = hit.bsdf.scatter(rng, hit.out_dir, hit.uv);
+      Vec3 local_in_dir = scatter.direction;
+      // Convert sampled direction to world space
+      world_in_dir = hit.object_to_world.rotate(local_in_dir);
+      
+      // Get the PDF for the direction we sampled
+      float bsdf_pdf = hit.bsdf.pdf(hit.out_dir, local_in_dir);
+      if (bsdf_pdf <= 0.0f) return radiance;
+      // The PDF for the combined sampling strategy (50% from BSDF, 50% from lights)
+      float area_pdf = area_lights_pdf(hit.pos, world_in_dir);
+      sample_pdf = 0.5f * bsdf_pdf + 0.5f * area_pdf;
+      attenuation = scatter.attenuation;
+    } else {
+      // Sample area lights
+      world_in_dir = sample_area_lights(rng, hit.pos);
+      
+      // Convert to local space for BSDF evaluation
+      Vec3 local_in_dir = hit.world_to_object.rotate(world_in_dir);
+      // Check if the sampled direction is valid for this surface
+        // (i.e., above the surface in local coordinates)
+      if (local_in_dir.y <= 0.0f) return radiance;
+      // The PDF for the combined sampling strategy
+      float bsdf_pdf = hit.bsdf.pdf(hit.out_dir, local_in_dir);
+      float area_pdf = area_lights_pdf(hit.pos, world_in_dir);
+      sample_pdf = 0.5f * bsdf_pdf + 0.5f * area_pdf;
+      // Get BSDF value for this direction (regardless of sampling strategy)
+      attenuation = hit.bsdf.evaluate(hit.out_dir, local_in_dir, hit.uv);
+    }
+    if (sample_pdf <= 0.0f) return radiance;
+    if (attenuation.luma() <= 0.0f) return radiance;
+     
+    // Create shadow ray to test if the sampled direction hits a light
+    Ray ray(hit.pos, world_in_dir, Vec2{EPS_F, std::numeric_limits<float>::infinity()}, 0);
+    // Log rays for debugging if enabled
+    if constexpr (LOG_AREA_LIGHT_RAYS) {
+      if (log_rng.coin_flip(0.001f)) log_ray(ray, 100.0f);
+    }
+    // Get emitted light from the sampled direction
+    auto [emissive, _] = trace(rng, ray);
+    
+    // Add weighted contribution if valid
+    radiance += emissive * attenuation / sample_pdf;
+    
+    return radiance;
 }
 
 /**
@@ -360,7 +401,7 @@ void Pathtracer::build_scene(Scene& scene_) {
 		}
 
 		
-		emissive_objects = List(std::move(area_lights));
+		emissive_objects = BVH(std::move(area_lights));
 		point_lights = std::move(lights);
 
 		if (scene_use_bvh) {
