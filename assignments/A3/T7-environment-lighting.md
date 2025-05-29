@@ -95,3 +95,37 @@ The reference images here are rendered with only the environmental lighting (i.e
 ## Extra Credit
 
 - Implement a version of `Samplers::Sphere::Image` that uses the alias method to do constant-time sampling (as opposed to the inversion sampling approach described above). Allow the methods to be switched with a `constexpr bool` global flag (along the lines of, e.g., `SAMPLE_AREA_LIGHTS` in `pathtracer.cpp`). Report the speedup (if any) of your alias method sampler as part of your write-up.
+
+
+
+## Testing Environment Lighting in Scotty3D GUI
+Here's a step-by-step guide on how to test your environment lighting implementation in the Scotty3D GUI:
+Basic Setup and Testing
+
+1. Open the provided test scene:
+
+- Load the A3-cow-env-empty.js3d scene file that was mentioned in the task description
+- If you don't have this file, you can create a new scene
+
+2. Add an Environment Light:
+
+- Navigate to layout in the top menu
+- Choose Create Object → Environment Light Instance
+- This will add an environment light to your scene
+
+
+3. Configure the Environment Light:
+
+- In the scene hierarchy panel, click on the dropdown for Env_light_transform
+- Select Env Light Instance
+- Go to the Light tab in the properties panel
+- Change the light type to Sphere (if not already selected)
+
+
+4. Add an Environment Map Image:
+
+- Click on the radiance field
+- Choose Create New to create a new texture
+- Set the texture type to Image
+- Press Change and select your HDR environment map file (.exr or .hdr)
+- You can use one of the environment maps you downloaded from the provided link in your task instructions

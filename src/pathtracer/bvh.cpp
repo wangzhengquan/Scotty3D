@@ -157,11 +157,6 @@ template<typename Primitive> Vec3 BVH<Primitive>::sample(RNG &rng, Vec3 from) co
 
 template<typename Primitive>
 float BVH<Primitive>::pdf(Ray ray, const Mat4& T, const Mat4& iT) const {
-  // if (primitives.empty()) return 0.0f;
-  // float ret = 0.0f;
-  // for (auto& prim : primitives) ret += prim.pdf(ray, T, iT);
-  // return ret / primitives.size();
-
   if (primitives.empty()) return 0.0f;
   float ret = 0.0f;
   std::function<void(const Node& node)> find_hit = [&](const Node& node) {

@@ -1,6 +1,9 @@
 
+#include <algorithm>
 #include "samplers.h"
 #include "../util/rand.h"
+#include "../scene/shape.h"
+
 
 constexpr bool IMPORTANCE_SAMPLING = true;
 
@@ -114,40 +117,113 @@ float Hemisphere::Cosine::pdf(Vec3 dir) const {
 	return dir.y / PI_F;
 }
 
+// Generate a uniformly random point on the unit sphere.
 Vec3 Sphere::Uniform::sample(RNG &rng) const {
 	//A3T7 - sphere sampler
-
-    // Generate a uniformly random point on the unit sphere.
-    // Tip: start with Hemisphere::Uniform
-
-    return Vec3{};
+   // Generate two uniform random numbers
+  float u1 = rng.unit();
+  float u2 = rng.unit();
+  
+  // Proper spherical coordinate convention:
+  float phi = 2.0f * PI_F * u1;       // Azimuthal angle [0, 2π]
+  float theta = std::acos(1.0f - 2.0f * u2); // Polar angle [0, π]
+  
+  // Convert to Cartesian coordinates
+  float sin_theta = std::sin(theta);
+  float x = sin_theta * std::cos(phi);  // x = sinθ cosφ
+  float y = sin_theta * std::sin(phi);  // y = sinθ sinφ
+  float z = std::cos(theta);            // z = cosθ
+  
+  return Vec3(x, y, z);
 }
+
+
 
 float Sphere::Uniform::pdf(Vec3 dir) const {
 	return 1.0f / (4.0f * PI_F);
 }
 
 Sphere::Image::Image(const HDR_Image& image) {
-    //A3T7 - image sampler init
-
-    // Set up importance sampling data structures for a spherical environment map image.
-    // You may make use of the _pdf, _cdf, and total members, or create your own.
-
-    const auto [_w, _h] = image.dimension();
-    w = _w;
-    h = _h;
+  //A3T7 - image sampler init
+  const auto [_w, _h] = image.dimension();
+  w = _w;
+  h = _h;
+  
+  // Allocate space for our PDF and CDF
+  _pdf.resize(w * h);
+  _cdf.resize(w * h + 1);
+  
+  // Compute the PDF for each pixel based on flux (radiance * sin(theta))
+  total = 0.0f;
+  _cdf[0] = 0.0f;
+  
+  for (uint32_t y = 0; y < h; y++) {
+    // Calculate theta for this row - NOTE: y=0 is bottom of image (theta = pi)
+    float theta = PI_F * (1.0f - (y + 0.5f) / h);
+    float sin_theta = std::sin(theta);
+    
+    for (uint32_t x = 0; x < w; x++) {
+      uint32_t idx = y * w + x;
+      
+      // Get the pixel color and compute its luminance
+      Spectrum pixel_color = image.at(x, y);
+      float luminance = pixel_color.luma();
+      
+      // PDF is proportional to pixel luminance * sin(theta)
+      // sin(theta) accounts for the area distortion in the sphere mapping
+      _pdf[idx] = luminance * sin_theta;
+      total += _pdf[idx];
+      
+      // Build the CDF as we go
+      _cdf[idx + 1] = _cdf[idx] + _pdf[idx];
+    }
+  }
+  
+  // Normalize PDF and CDF
+  if (total > 0.0f) {
+    for (uint32_t i = 0; i < w * h; i++) {
+        _pdf[i] /= total;
+    }
+    for (uint32_t i = 0; i <= w * h; i++) {
+        _cdf[i] /= total;
+    }
+  }
 }
 
 Vec3 Sphere::Image::sample(RNG &rng) const {
 	if(!IMPORTANCE_SAMPLING) {
 		// Step 1: Uniform sampling
 		// Declare a uniform sampler and return its sample
-    	return Vec3{};
+    return Uniform{}.sample(rng);
 	} else {
 		// Step 2: Importance sampling
-		// Use your importance sampling data structure to generate a sample direction.
-		// Tip: std::upper_bound
-    	return Vec3{};
+    // Generate a random number in [0,1)
+    float Xi = rng.unit();
+    
+    // Binary search to find the pixel index from the CDF
+    auto it = std::upper_bound(_cdf.begin(), _cdf.end(), Xi);
+    uint32_t idx = (uint32_t)std::distance(_cdf.begin(), it) - 1;
+    
+    // Convert linear index to 2D pixel coordinates
+    uint32_t y = idx / w;
+    uint32_t x = idx % w;
+    
+    // Convert to continuous coordinates with small random offset for stratification
+    float u = (x + 0.5f) / float(w);  // phi = 2π * u
+    float v = (y + 0.5f) / float(h);  // theta = π * (1-v)
+    
+    // Map to spherical coordinates
+    float phi = 2.0f * PI_F * u;
+    float theta = PI_F * (1.0f - v);  // Bottom of image is theta = pi
+    
+    // Convert to Cartesian coordinates
+    float sin_theta = std::sin(theta);
+    float x_dir = std::cos(phi) * sin_theta;
+    float y_dir = std::cos(theta);
+    float z_dir = std::sin(phi) * sin_theta;
+    
+    return Vec3(x_dir, y_dir, z_dir);
+    
 	}
 }
 
@@ -155,11 +231,36 @@ float Sphere::Image::pdf(Vec3 dir) const {
     if(!IMPORTANCE_SAMPLING) {
 		// Step 1: Uniform sampling
 		// Declare a uniform sampler and return its pdf
-    	return 0.f;
+    return Uniform{}.pdf(dir);
 	} else {
 		// A3T7 - image sampler importance sampling pdf
-		// What is the PDF of this distribution at a particular direction?
-    	return 0.f;
+
+    // Convert direction to image coordinates
+    // First, convert to spherical coordinates
+    float theta = std::acos(std::clamp(dir.y, -1.0f, 1.0f));
+    // We need to handle the special case where dir.x and dir.z are both 0
+    float phi = std::atan2(dir.z, dir.x);
+    if (phi < 0.0f) phi += 2.0f * PI_F; // Map to [0, 2π)
+    
+    // Map spherical coordinates to image coordinates
+    float u = phi / (2.0f * PI_F);
+    float v = 1.0f - (theta / PI_F); // Map [0, π] -> [1, 0]
+    
+    // Convert to pixel indices
+    int x = std::min(static_cast<int>(u * w), (int)w - 1);
+    int y = std::min(static_cast<int>(v * h), (int)h - 1);
+    int idx = y * w + x;
+    
+    // Get the PDF value for this pixel
+    float pdf_value = _pdf[idx];
+    
+    // Apply the Jacobian: (w*h)/(2π²*sin(θ))
+    // This accounts for the transformation from image space to sphere space
+    if (std::sin(theta) > 1e-6f) {
+        pdf_value *= (w * h) / (2.0f * PI_F * PI_F * std::sin(theta));
+    }
+    
+    return pdf_value;
 	}
 }
 

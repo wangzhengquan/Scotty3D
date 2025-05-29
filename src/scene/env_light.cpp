@@ -38,8 +38,7 @@ float Sphere::pdf(Vec3 dir) const {
 Sphere Sphere::make_image(std::weak_ptr<Texture> image_texture) {
 	Sphere ret;
 	ret.radiance = image_texture;
-	ret.importance =
-		Samplers::Sphere::Image{std::get<Textures::Image>(image_texture.lock()->texture).image};
+	ret.importance = Samplers::Sphere::Image{std::get<Textures::Image>(image_texture.lock()->texture).image};
 	return ret;
 }
 

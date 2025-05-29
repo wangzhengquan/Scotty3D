@@ -11,7 +11,7 @@ namespace PT {
 constexpr bool SAMPLE_AREA_LIGHTS = true;
 constexpr bool RENDER_NORMALS = false;
 constexpr bool LOG_CAMERA_RAYS = false;
-constexpr bool LOG_AREA_LIGHT_RAYS = false;
+constexpr bool LOG_AREA_LIGHT_RAYS = true;
 constexpr bool LOG_INDIR_LIGHT_RAYS = false;
 
 static thread_local RNG log_rng(0x15462662); //separate RNG for logging a fraction of rays to avoid changing result when logging enabled
@@ -97,16 +97,18 @@ Spectrum Pathtracer::sample_direct_lighting_task6(RNG &rng, const Shading_Info& 
       sample_pdf = 0.5f * bsdf_pdf + 0.5f * area_pdf;
       // Get BSDF value for this direction (regardless of sampling strategy)
       attenuation = hit.bsdf.evaluate(hit.out_dir, local_in_dir, hit.uv);
+
+      // Log rays for debugging if enabled
+      if constexpr (LOG_AREA_LIGHT_RAYS) {
+        if (log_rng.coin_flip(0.001f)) log_ray(Ray(hit.pos, world_in_dir), 100.0f);
+      }
     }
     if (sample_pdf <= 0.0f) return radiance;
     if (attenuation.luma() <= 0.0f) return radiance;
      
     // Create shadow ray to test if the sampled direction hits a light
     Ray ray(hit.pos, world_in_dir, Vec2{EPS_F, std::numeric_limits<float>::infinity()}, 0);
-    // Log rays for debugging if enabled
-    if constexpr (LOG_AREA_LIGHT_RAYS) {
-      if (log_rng.coin_flip(0.001f)) log_ray(ray, 100.0f);
-    }
+    
     // Get emitted light from the sampled direction
     auto [emissive, _] = trace(rng, ray);
     
