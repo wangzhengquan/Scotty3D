@@ -141,7 +141,7 @@ struct Vec3 {
 	}
 	/// Are all members real numbers?
 	bool valid() const {
-		return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
+		return std::isfinite(x) && std::isfinite(y) && std::isfinite(z) && norm_squared() > 0;
 	}
 
 	/// Modify vec to have unit length

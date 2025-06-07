@@ -9,6 +9,10 @@
 #include <vector>
 
 
+Test test_me_b1("me.b1", []() {
+  auto mat = Mat4::angle_axis(30.0, Vec3(0.0f, 0.0f, 1.0f));
+  std::cout << "\nMat4::angle_axis(30.0, Vec3(1.0f, 0.0f, 0.0f)) = \n" << mat << std::endl;
+});
 
 Test test_me_b0("me.b0", []() {
   RNG rng;

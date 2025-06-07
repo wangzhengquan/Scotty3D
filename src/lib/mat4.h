@@ -443,6 +443,10 @@ inline Mat4 Mat4::skew_symmetric(Vec3 v) {
 				   Vec4{0.0f, 0.0f, 0.0f, 1.0f}};
 	return r;
 }
+
+/**
+ * produce a matrix that rotates angle t (in degrees) around a given axis
+*/
 inline Mat4 Mat4::angle_axis(float t, Vec3 axis) {
 	Mat4 ret;
 	float c = std::cos(Radians(t));
@@ -458,6 +462,7 @@ inline Mat4 Mat4::angle_axis(float t, Vec3 axis) {
 	ret[2][0] = temp[2] * axis[0] + s * axis[1];
 	ret[2][1] = temp[2] * axis[1] - s * axis[0];
 	ret[2][2] = c + temp[2] * axis[2];
+
 	return ret;
 }
 

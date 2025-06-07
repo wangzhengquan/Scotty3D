@@ -80,7 +80,7 @@ public:
 		//these are unique for every bone so that deleting a bone doesn't screw up animation channels:
 		uint32_t channel_id = 0;
 
-		//- - - - - - - - - - - -
+		// - - - - - - - - - - - -
 		template< Intent I, typename F, typename T >
 		static void introspect(F&& f, T&& t) {
 			if constexpr (I != Intent::Animate) f("bone", t.bone);

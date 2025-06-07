@@ -24,13 +24,16 @@ Test test_a4_task2_step_ik_single_joint_single_target("a4.task2.step_ik.single_j
 	}
 
 	if (Test::differs(queue.front(), queue.back())) {
+    std::cout << "\nqueue.front=" << queue.front() << ", queue.back=" << queue.back() << std::endl;
 		throw Test::error("IK did not converge within the desired number of iterations!");
 	}
 	if (Test::differs(simple.base, Vec3(0.0f, 0.0f, 0.0f))) {
+    std::cout << "\nsimple.base=" << simple.base << std::endl;
 		throw Test::error("Base position should not move during IK!");
 	}
 	if (!in_range(simple.bones[joint].pose, Vec3(44.9f, 0.0f, 0.0f), Vec3(45.1f, 0.0f, 0.0f))) {
-		throw Test::error("Joint pose differs from target!");
+		std::cout << "\nsimple.bones[joint].pose=" << simple.bones[joint].pose << std::endl;
+    throw Test::error("Joint pose differs from target!");
 	}
 });
 
