@@ -109,52 +109,50 @@ std::vector< Mat4 > Skeleton::current_pose() const {
 
 }
 
+/**
+ * Computes the gradient (partial derivative) of IK energy relative to each bone's Bone::pose, in the current pose.
+*/
 std::vector< Vec3 > Skeleton::gradient_in_current_pose() const {
   //A4T2b: IK gradient
 
-  // Computes the gradient (partial derivative) of IK energy relative to each bone's Bone::pose, in the current pose.
-
 	//The IK energy is the sum over all *enabled* handles of the squared distance from the tip of Handle::bone to Handle::target
 	std::vector< Vec3 > gradient(bones.size(), Vec3{0.0f, 0.0f, 0.0f});
-
-	//TODO: loop over handles and over bones in the chain leading to the handle, accumulating gradient contributions.
-	//remember bone.compute_rotation_axes() -- should be useful here, too!
   auto pose_matrices = current_pose();
-
+	//loop over handles and over bones in the chain leading to the handle, accumulating gradient contributions.
   for (const auto& handle : handles) {
-      if (!handle.enabled) continue;
+    if (!handle.enabled) continue;
 
-      BoneIndex ik_bone_idx = handle.bone;
-      Vec3 target_pos = handle.target;
+    BoneIndex ik_bone_idx = handle.bone;
+    Vec3 target_pos = handle.target;
 
-      const auto& ik_bone = bones[ik_bone_idx];
-      // pos_i(q) = T_i(q) * extent_i
-      Vec3 tip_pos = (pose_matrices[ik_bone_idx] * Vec4(ik_bone.extent, 1.0f)).xyz();
-      Vec3 error_vec = tip_pos - target_pos;
+    const auto& ik_bone = bones[ik_bone_idx];
+    // pos_i(q) = T_i(q) * extent_i
+    Vec3 tip_pos = (pose_matrices[ik_bone_idx] * Vec4(ik_bone.extent, 1.0f)).xyz();
+    Vec3 error_vec = tip_pos - target_pos;
 
-      BoneIndex current_bone_idx = ik_bone_idx;
-      while (current_bone_idx != -1U) {
-          const auto& bone = bones[current_bone_idx];
-          Mat4 T = pose_matrices[current_bone_idx];
-          Vec3 center = (T * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz();
+    BoneIndex current_bone_idx = ik_bone_idx;
+    while (current_bone_idx != -1U) {
+      const auto& bone = bones[current_bone_idx];
+      Mat4 T = pose_matrices[current_bone_idx];
+      Vec3 center = (T * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz();
 
-          Vec3 x, y, z;
-          bone.compute_rotation_axes(&x, &y, &z);
- 
-          Vec3 axis_x = (T * Vec4(1.0f, 0.0f, 0.0f, 0.0f)).xyz();
-          Vec3 axis_y = (T * Mat4::angle_axis(-bone.pose.x, x) * Vec4(0.0f, 1.0f, 0.0f, 0.0f)).xyz();
-          Vec3 axis_z =  (T * Mat4::angle_axis(-bone.pose.x, x) * Mat4::angle_axis(-bone.pose.y, y) * Vec4(0.0f, 0.0f, 1.0f, 0.0f)).xyz();
+      Vec3 x, y, z;
+      bone.compute_rotation_axes(&x, &y, &z);
 
-          Vec3 partial_pos_x = cross(axis_x, tip_pos - center);
-          Vec3 partial_pos_y = cross(axis_y, tip_pos - center);
-          Vec3 partial_pos_z = cross(axis_z, tip_pos - center);
-          
-          gradient[current_bone_idx].x += dot(error_vec, partial_pos_x);
-          gradient[current_bone_idx].y += dot(error_vec, partial_pos_y);
-          gradient[current_bone_idx].z += dot(error_vec, partial_pos_z);
+      Vec3 axis_x = (T * Vec4(1.0f, 0.0f, 0.0f, 0.0f)).xyz();
+      Vec3 axis_y = (T * Mat4::angle_axis(-bone.pose.x, x) * Vec4(0.0f, 1.0f, 0.0f, 0.0f)).xyz();
+      Vec3 axis_z =  (T * Mat4::angle_axis(-bone.pose.x, x) * Mat4::angle_axis(-bone.pose.y, y) * Vec4(0.0f, 0.0f, 1.0f, 0.0f)).xyz();
 
-          current_bone_idx = bone.parent;
-      }
+      Vec3 partial_pos_x = cross(axis_x, tip_pos - center);
+      Vec3 partial_pos_y = cross(axis_y, tip_pos - center);
+      Vec3 partial_pos_z = cross(axis_z, tip_pos - center);
+      
+      gradient[current_bone_idx].x += dot(error_vec, partial_pos_x);
+      gradient[current_bone_idx].y += dot(error_vec, partial_pos_y);
+      gradient[current_bone_idx].z += dot(error_vec, partial_pos_z);
+
+      current_bone_idx = bone.parent;
+    }
   }
   return gradient;
 }
@@ -164,14 +162,7 @@ std::vector< Vec3 > Skeleton::gradient_in_current_pose() const {
 bool Skeleton::solve_ik(uint32_t steps) {
 	//A4T2b - gradient descent
 	//check which handles are enabled
-	//run `steps` iterations
-	
-	//call gradient_in_current_pose() to compute d loss / d pose
-	//add ...
-
-	//if at a local minimum (e.g., gradient is near-zero), return 'true'.
-	//if run through all steps, return `false`.
-	bool any_enabled = false;
+  bool any_enabled = false;
 	for (const auto& handle : handles) {
 		if (handle.enabled) {
 			any_enabled = true;
@@ -182,25 +173,26 @@ bool Skeleton::solve_ik(uint32_t steps) {
 	
 	// A small fixed step size for gradient descent.
 	float tau = 0.1f;
-
+  //run `steps` iterations
 	for (uint32_t i = 0; i < steps; ++i) {
+    //call gradient_in_current_pose() to compute d loss / d pose
 		std::vector<Vec3> grad = gradient_in_current_pose();
 		
 		float grad_norm_sq = 0.0f;
 		for (const auto& g : grad) {
 			grad_norm_sq += g.norm_squared();
 		}
-		
 		// Check for convergence
+    // if at a local minimum (e.g., gradient is near-zero), return 'true'.
 		if (grad_norm_sq < 1e-6f) {
 			return true;
 		}
-		
 		// Apply gradient descent step
 		for (size_t j = 0; j < bones.size(); ++j) {
 			bones[j].pose -= tau * grad[j];
 		}
 	}
+  //if run through all steps, return `false`.
 	return false;
 }
 
