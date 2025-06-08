@@ -146,18 +146,16 @@ std::vector< Vec3 > Skeleton::gradient_in_current_pose() const {
       Vec3 partial_pos_x = cross(axis_x, tip_pos - center);
       Vec3 partial_pos_y = cross(axis_y, tip_pos - center);
       Vec3 partial_pos_z = cross(axis_z, tip_pos - center);
-      
-      gradient[current_bone_idx].x += dot(error_vec, partial_pos_x);
-      gradient[current_bone_idx].y += dot(error_vec, partial_pos_y);
-      gradient[current_bone_idx].z += dot(error_vec, partial_pos_z);
-
+   
+      gradient[current_bone_idx] += Vec3(dot(error_vec, partial_pos_x), dot(error_vec, partial_pos_y), dot(error_vec, partial_pos_z));
+  //  std::cout << "partial_pos_x=" << partial_pos_x << ", "<< "partial_pos_y=" << partial_pos_y << ", " << "partial_pos_z=" << partial_pos_z << std::endl;
+  //  std::cout << "gradient[current_bone_idx]=" << gradient[current_bone_idx] << std::endl;
       current_bone_idx = bone.parent;
     }
   }
   return gradient;
 }
  
-
 
 bool Skeleton::solve_ik(uint32_t steps) {
 	//A4T2b - gradient descent
@@ -177,13 +175,6 @@ bool Skeleton::solve_ik(uint32_t steps) {
 	for (uint32_t i = 0; i < steps; ++i) {
     //call gradient_in_current_pose() to compute d loss / d pose
 		std::vector<Vec3> grad = gradient_in_current_pose();
-    // if (i ==0) {
-      // std::cout << "\n====" << std::endl;
-      // for (size_t j = 0; j < bones.size(); ++j) {
-      //   std::cout << grad[j] << std::endl;
-      // }
-      // std::cout << "====" << std::endl;
-    // }
 		float grad_norm_sq = 0.0f;
 		for (const auto& g : grad) {
 			grad_norm_sq += g.norm_squared();

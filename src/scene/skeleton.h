@@ -99,7 +99,9 @@ public:
 	//move skeleton toward ik handles by gradient descent:
 	// terminate after either `steps` steps (returns false)
 	// or after converging to a solution (returns true)
-	bool solve_ik(uint32_t steps = 10);
+	bool solve_ik(uint32_t steps = 360);
+  bool solve_ik1(uint32_t steps = 360);
+  bool solve_ik2(uint32_t steps = 360);
 
 	//assign Vertex::bone weights on halfedge mesh:
 	// vertices are assigned weights for every bone for which they are closer than bone.radius (in the bind pose)
