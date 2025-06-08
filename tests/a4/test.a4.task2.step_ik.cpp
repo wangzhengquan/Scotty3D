@@ -37,3 +37,22 @@ Test test_a4_task2_step_ik_single_joint_single_target("a4.task2.step_ik.single_j
 	}
 });
 
+
+Test test_a4_task2_step_ik_single_joint_single_target2("a4.task2.step_ik.single_joint.single_target2", []() {
+	Skeleton simple;
+	auto joint = simple.add_bone(-1U, Vec3(0.0f, 1.0f, 0.0f));
+	auto ikHandle = simple.add_handle(joint, Vec3(0.0f, 1.0f, 1.0f));
+	simple.handles[ikHandle].enabled = true;
+
+	simple.solve_ik(360);
+
+	if (Test::differs(simple.base, Vec3(0.0f, 0.0f, 0.0f))) {
+    std::cout << "\nsimple.base=" << simple.base << std::endl;
+		throw Test::error("Base position should not move during IK!");
+	}
+	if (!in_range(simple.bones[joint].pose, Vec3(44.9f, 0.0f, 0.0f), Vec3(45.1f, 0.0f, 0.0f))) {
+		std::cout << "\nsimple.bones[joint].pose=" << simple.bones[joint].pose << std::endl;
+    throw Test::error("Joint pose differs from target!");
+	}
+});
+

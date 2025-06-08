@@ -172,19 +172,25 @@ bool Skeleton::solve_ik(uint32_t steps) {
 	if (!any_enabled) return true;
 	
 	// A small fixed step size for gradient descent.
-	float tau = 0.1f;
+	float tau = 1.0f;
   //run `steps` iterations
 	for (uint32_t i = 0; i < steps; ++i) {
     //call gradient_in_current_pose() to compute d loss / d pose
 		std::vector<Vec3> grad = gradient_in_current_pose();
-		
+    // if (i ==0) {
+      // std::cout << "\n====" << std::endl;
+      // for (size_t j = 0; j < bones.size(); ++j) {
+      //   std::cout << grad[j] << std::endl;
+      // }
+      // std::cout << "====" << std::endl;
+    // }
 		float grad_norm_sq = 0.0f;
 		for (const auto& g : grad) {
 			grad_norm_sq += g.norm_squared();
 		}
 		// Check for convergence
     // if at a local minimum (e.g., gradient is near-zero), return 'true'.
-		if (grad_norm_sq < 1e-6f) {
+		if (grad_norm_sq < 1e-8f) {
 			return true;
 		}
 		// Apply gradient descent step
