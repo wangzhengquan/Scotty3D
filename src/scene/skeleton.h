@@ -94,7 +94,7 @@ public:
 
 	//first derivative (with respect to Bone::pose) of the function
 	// which measures squared distance from each enabled ik handle's target to the tip of its bone.
-	std::vector< Vec3 > gradient_in_current_pose() const;
+	std::pair< std::vector< Vec3 >,std::vector< Mat4 > > gradient_in_current_pose() const;
 
 	//move skeleton toward ik handles by gradient descent:
 	// terminate after either `steps` steps (returns false)

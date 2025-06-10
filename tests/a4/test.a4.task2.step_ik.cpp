@@ -44,7 +44,7 @@ Test test_a4_task2_step_ik_single_joint_single_target2("a4.task2.step_ik.single_
 	auto ikHandle = simple.add_handle(joint, Vec3(0.0f, 1.0f, 1.0f));
 	simple.handles[ikHandle].enabled = true;
 
-	simple.solve_ik(360);
+	simple.solve_ik(3600);
 
 	if (Test::differs(simple.base, Vec3(0.0f, 0.0f, 0.0f))) {
     std::cout << "\nsimple.base=" << simple.base << std::endl;

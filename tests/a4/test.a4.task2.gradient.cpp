@@ -22,7 +22,7 @@ Test a4_task2_gradient_single_handle_pose("a4.task2.gradient.single_handle.pose"
 	auto j = setup_skeleton_gradient(skeleton, true);
 	auto handle1 = skeleton.add_handle(j[1], Vec3(0.0f, 0.0f, 1.0f));
     skeleton.handles[handle1].enabled = true;
-	auto grads = skeleton.gradient_in_current_pose();
+	auto [grads, _] = skeleton.gradient_in_current_pose();
 	if (Test::differs(grads[j[0]], Vec3(0.0f, 0.0f, 0.0f))) {
     std::cout << "\nGradient at root: " << grads[j[0]] << "\n";
 		throw Test::error("Wrong gradient computed at the root bone!");
@@ -38,7 +38,7 @@ Test a4_task2_gradient_single_handle_bind("a4.task2.gradient.single_handle.bind"
 	auto j = setup_skeleton_gradient(skeleton, false);
 	auto handle1 = skeleton.add_handle(j[1], Vec3(0.0f, 0.0f, 1.0f));
     skeleton.handles[handle1].enabled = true;
-	auto grads = skeleton.gradient_in_current_pose();
+	auto [grads, _] = skeleton.gradient_in_current_pose();
 	if (Test::differs(grads[j[0]], Vec3(0.0f, 0.0f, 0.0f))) {
     std::cout << "\nGradient at root: " << grads[j[0]] << "\n";
 		throw Test::error("Wrong gradient computed at the root bone!");
@@ -54,7 +54,7 @@ Test a4_task2_gradient_no_handle("a4.task2.gradient.no_handle", []() {
 	auto j = setup_skeleton_gradient(skeleton, false);
 	auto handle1 = skeleton.add_handle(j[1], Vec3(0.0f, 0.0f, 1.0f));
     skeleton.handles[handle1].enabled = false;
-	auto grads = skeleton.gradient_in_current_pose();
+	auto [grads, _] = skeleton.gradient_in_current_pose();
 	if (Test::differs(grads[j[0]], Vec3(0.0f, 0.0f, 0.0f))) {
 		throw Test::error("Wrong gradient computed at the root bone!");
 	}
