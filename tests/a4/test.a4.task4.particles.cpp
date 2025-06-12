@@ -19,14 +19,17 @@ Test test_a4_task4_particles_free_fall("a4.task4.particles.free_fall", []() {
 	Vec3 actual_pos = particles.particles[0].position;
 	Vec3 actual_velocity = particles.particles[0].velocity;
 	if (Test::differs(expected_pos, actual_pos)) {
+    std::cout << "\nExpected position: " << expected_pos << ", Actual position: " << actual_pos << std::endl;
 		throw Test::error("Particle position differs from expected value!");
 	} else if (Test::differs(expected_velocity, actual_velocity)) {
+    std::cout << "\nExpected velocity: " << expected_velocity << ", Actual velocity: " << actual_velocity << std::endl;
 		throw Test::error("Particle velocity differs from expected value!");
 	}
 });
 
 Test test_a4_task4_particles_ground_only("a4.task4.particles.ground_only", []() {
 	PT::Tri_Mesh ground_mesh{Util::square_mesh(10), false};
+  // PT::Instance d;
 	PT::Aggregate ground{PT::List{std::vector{PT::Instance{&ground_mesh, nullptr, Mat4::I}}}};
 
 	Particles particles;
@@ -41,8 +44,10 @@ Test test_a4_task4_particles_ground_only("a4.task4.particles.ground_only", []() 
 	Vec3 actual_pos = particles.particles[0].position;
 	Vec3 actual_velocity = particles.particles[0].velocity;
 	if (Test::differs(expected_pos, actual_pos)) {
+    std::cout << "\nExpected position: " << expected_pos << ", Actual position: " << actual_pos << std::endl;
 		throw Test::error("Particle position differs from expected value!");
 	} else if (Test::differs(expected_velocity, actual_velocity)) {
+    std::cout << "\nExpected velocity: " << expected_velocity << ", Actual velocity: " << actual_velocity << std::endl;
 		throw Test::error("Particle velocity differs from expected value!");
 	}
 });

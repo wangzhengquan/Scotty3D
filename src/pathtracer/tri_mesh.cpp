@@ -36,7 +36,6 @@ Trace Triangle::hit(const Ray& ray) const {
   Tri_Mesh_Vert v_0 = vertex_list[v0];
   Tri_Mesh_Vert v_1 = vertex_list[v1];
   Tri_Mesh_Vert v_2 = vertex_list[v2];
-
   Trace ret;
   ret.origin = ray.point;
   ret.hit = false;
@@ -44,15 +43,15 @@ Trace Triangle::hit(const Ray& ray) const {
   // Möller-Trumbore algorithm
   Vec3 e1 = v_1.position - v_0.position;
   Vec3 e2 = v_2.position - v_0.position;
-  Vec3 s = ray.point - v_0.position;
+  Vec3 c = ray.point - v_0.position;
   Vec3 s1 = cross(ray.dir, e2);
-  Vec3 s2 = cross(s, e1);
+  Vec3 s2 = cross(c, e1);
 
   float divisor = dot(s1, e1);
   if (divisor == 0.0f) return ret; // Ray parallel to triangle plane
 // std::cout << "divisor: " << divisor << ", " <<  dot(cross(ray.dir, e1), e2) << std::endl;
   // Compute barycentric coordinates
-  float u = dot(s1, s) / divisor;
+  float u = dot(s1, c) / divisor;
   float v = dot(s2, ray.dir) / divisor;
   float t = dot(s2, e2) / divisor;
 
@@ -67,7 +66,6 @@ Trace Triangle::hit(const Ray& ray) const {
     ret.hit = true;
     ret.distance = t;
     ret.position = ray.at(t);
-    
     // Interpolate normal
     float w = 1.0f - u - v;
     ret.normal = (w * v_0.normal + u * v_1.normal + v * v_2.normal).unit();
